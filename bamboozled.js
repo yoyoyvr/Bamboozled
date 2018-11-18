@@ -2,6 +2,11 @@
 //
 // Name-guessing game using BambooHR API.
 //
+// Google auth:
+//  https://medium.com/@jackrobertscott/how-to-use-google-auth-api-with-node-js-888304f7e3a0
+//  https://cloud.google.com/nodejs/getting-started/authenticate-users
+//  https://www.npmjs.com/package/passport-google-oauth2
+//
 // Available employee fields:
 //  id: '12345'
 //  displayName: 'Doe, Jane'
@@ -23,25 +28,30 @@
 
 const http = require('http');
 const https = require('https');
-const url = require('url')
-const fs = require('fs')
+const url = require('url');
+const fs = require('fs');
+const path = require('path');
 
 // Global variables.
 const config = JSON.parse(fs.readFileSync('.config', 'utf8'));
 var employeeDirectory = null;
 
-function onEmployeeDirectoryResponse(response) {
+function onEmployeeDirectoryResponse(response)
+{
       response.setEncoding('utf8');
       var body = "";
-      response.on('data', function (chunk) {
+      response.on('data', function (chunk)
+      {
           body += chunk;
-      }).on('end', function() {
+      }).on('end', function()
+      {
         employeeDirectory = JSON.parse(body)['employees'];
       });
       response.on('error', console.error);
 }
 
-function getEmployeeDirectory() {
+function getEmployeeDirectory()
+{
     var options = {
       host: 'api.bamboohr.com',
       method: 'GET',
@@ -52,7 +62,8 @@ function getEmployeeDirectory() {
     var req = https.request(options, onEmployeeDirectoryResponse).end();
 }
 
-function serveRandomEmployee(response) {
+function serveRandomEmployee(response)
+{
     var r = Math.floor(Math.random() * employeeDirectory.length);
     var employee = employeeDirectory[r];
     response.writeHead(200, {'Content-Type': 'text/html'});
@@ -63,19 +74,34 @@ function serveRandomEmployee(response) {
     response.end();
 }
 
-function serveFile(path, response) {
-    if (fs.existsSync(path)) {
+function serveFile(requestPath, response)
+{
+    const clientRoot = "client";
+    if (requestPath == "")
+    {
+        requestPath = "index.html";
+    }
+    var clientPath = path.join(clientRoot, requestPath);
+    if (fs.existsSync(clientPath))
+    {
         response.statusCode = 200;
-        fs.createReadStream(requestPath).pipe(response)
-    } else {
+        fs.createReadStream(clientPath).pipe(response)
+        console.log("serving " + clientPath);
+    }
+    else
+    {
         response.statusCode = 404;
         response.end("Sorry, couldn't find " + requestPath);
+        console.log("error serving " + clientPath);
     }
 }
 
-function serveRequest(request, response) {
+function serveRequest(request, response)
+{
+    // Omit leading slash from path.
     var requestPath = url.parse(request.url).pathname.substring(1);
-    switch (requestPath) {
+    switch (requestPath)
+    {
         case 'random':
             serveRandomEmployee(response);
             break;
@@ -84,10 +110,12 @@ function serveRequest(request, response) {
     }
 }
 
-function startServer() {
+function startServer()
+{
     http.createServer(serveRequest)
         .listen(config.port, config.hostname,
-            () => {
+            function()
+            {
                 console.log(`Server running at http://${config.hostname}:${config.port}/`);
             });
 }
