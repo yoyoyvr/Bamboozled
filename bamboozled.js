@@ -76,6 +76,8 @@ function serveRandomEmployee(response)
 
 function serveFile(requestPath, response)
 {
+    console.log("serving " + requestPath);
+        
     const clientRoot = "client";
     if (requestPath == "")
     {
@@ -86,7 +88,7 @@ function serveFile(requestPath, response)
     {
         response.statusCode = 200;
         fs.createReadStream(clientPath).pipe(response)
-        console.log("serving " + clientPath);
+        console.log("served " + clientPath);
     }
     else
     {
