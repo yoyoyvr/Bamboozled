@@ -1,30 +1,83 @@
-// bamboozled.js
-//
-// Name-guessing game using BambooHR API.
-//
-// Google auth:
-//  https://medium.com/@jackrobertscott/how-to-use-google-auth-api-with-node-js-888304f7e3a0
-//  https://cloud.google.com/nodejs/getting-started/authenticate-users
-//  https://www.npmjs.com/package/passport-google-oauth2
-//
-// Available employee fields:
-//  id: '12345'
-//  displayName: 'Doe, Jane'
-//  firstName: 'Jane'
-//  lastName: 'Doe'
-//  preferredName: null
-//  gender: 'Female'
-//  jobTitle: 'Senior Programmer'
-//  workPhone: null
-//  mobilePhone: '404-123-4567'
-//  workEmail: 'jane.doe@work.com'
-//  department: 'Technology'
-//  location: 'Skunkworks'
-//  division: 'ABC'
-//  workPhoneExtension: null
-//  photoUploaded: true
-//  photoUrl: 'https://s3.ca-central-1.amazonaws.com/bamboohr-app-ca-central-1-production/images/1234/photos/12345-2-1.jpg'
-//  canUploadPhoto: 0
+/*
+==Bamboozled==
+
+Name-guessing game using BambooHR API.
+
+TODO:
+- question and answer client/server flow
+- Google auth (Blackbird only, and so we know which employee is playing)
+- redis data store for employee directory
+- user bio feature (stored in redis)
+- relationship strength table (MySQL; record correct guesses, number of attempts, etc.)
+- incorrect guesses table
+- name and logo (Bamboozled? BimBamboo?)
+*/
+
+/*
+Q&A flow (simple initial version):
+
+These may help (install Request package?):
+https://nodejs.org/docs/latest/api/http.html#http_class_http_clientrequest
+https://www.twilio.com/blog/2017/08/http-requests-in-node-js.html
+
+    CLIENT                      SERVER
+    access main page
+                                serve main page
+    TODO: configure mode options
+    click [start]
+    submit start request
+                                receive start request
+                                create session
+                                store session
+                                create quiz
+                                serve first question
+    display question
+    receive client input
+    submit answer
+                                receive answer
+                                retrieve session info (current question)
+                                validate answer
+                                store result
+                                serve response (correct/incorrect)
+                                TODO: hints, try again, etc.
+    display response
+    click [continue]
+    submit continue request
+                                receive continue request
+                                retrieve session info
+                                serve next question
+    <repeat from above>
+                                OR serve quiz summary
+    display summary
+*/
+
+/*
+ Google auth:
+  https://medium.com/@jackrobertscott/how-to-use-google-auth-api-with-node-js-888304f7e3a0
+  https://cloud.google.com/nodejs/getting-started/authenticate-users
+  https://www.npmjs.com/package/passport-google-oauth2
+*/
+
+/*
+Available employee fields (from Bamboo):
+ id: '12345'
+ displayName: 'Doe, Jane'
+ firstName: 'Jane'
+ lastName: 'Doe'
+ preferredName: null
+ gender: 'Female'
+ jobTitle: 'Senior Programmer'
+ workPhone: null
+ mobilePhone: '404-123-4567'
+ workEmail: 'jane.doe@work.com'
+ department: 'Technology'
+ location: 'Skunkworks'
+ division: 'ABC'
+ workPhoneExtension: null
+ photoUploaded: true
+ photoUrl: 'https://s3.ca-central-1.amazonaws.com/bamboohr-app-ca-central-1-production/images/1234/photos/12345-2-1.jpg'
+ canUploadPhoto: 0
+*/
 
 const http = require('http');
 const https = require('https');
