@@ -5,12 +5,13 @@ Name-guessing game using BambooHR API.
 
 TODO:
 - question and answer client/server flow
+- don't crash!!
 - Google auth (Blackbird only, and so we know which employee is playing)
 - redis data store for employee directory
 - user bio feature (stored in redis)
 - relationship strength table (MySQL; record correct guesses, number of attempts, etc.)
 - incorrect guesses table
-- name and logo (Bamboozled? BimBamboo?)
+- name and logo (Bamboom? Bamboozled? BimBamboo?)
 */
 
 /*
@@ -119,12 +120,47 @@ function serveRandomEmployee(response)
 {
     var r = Math.floor(Math.random() * employeeDirectory.length);
     var employee = employeeDirectory[r];
-    response.writeHead(200, {'Content-Type': 'text/html'});
-    response.write("<body>");
-    response.write(`Hello ${employee.firstName}!<br>`);
-    response.write(`<img src="${employee.photoUrl}">`);
-    response.write("</body>");
+    response.writeHead(200, {'Content-Type': 'application/json'});
+    var data = { id: employee.id, img: employee.photoUrl };
+    response.write(JSON.stringify(data));
     response.end();
+}
+
+function serveAnswerReply(response, query)
+{
+    var employee = findEmployee(query.id);
+    response.writeHead(200, {'Content-Type': 'application/json'});
+    var data = { id: employee.id, name: employeeFullName(employee), correct: employeeNameMatches(employee, query.name) };
+    response.write(JSON.stringify(data));
+    response.end();
+}
+
+function findEmployee(id)
+{
+    for (var i = 0; i < employeeDirectory.length; i++)
+    {
+        var employee = employeeDirectory[i];
+        if (employee.id == id)
+            return employee;
+    }
+    
+    return null;
+}
+
+function employeeNameMatches(employee, name)
+{
+    var upperName = name.toUpperCase();
+    var matches =
+        (upperName == employee.firstName.toUpperCase()) ||
+        (upperName == employee.preferredName.toUpperCase()) ||
+        (upperName == employee.lastName.toUpperCase());
+    return matches;
+}
+
+// TODO: this isn't working right
+function employeeFullName(employee)
+{
+    return (employee.preferredName != null) ? (employee.preferredName + " " + employee.lastName) : (employee.firstName + " " + employee.lastName);
 }
 
 function serveFile(requestPath, response)
@@ -153,12 +189,18 @@ function serveFile(requestPath, response)
 
 function serveRequest(request, response)
 {
-    // Omit leading slash from path.
-    var requestPath = url.parse(request.url).pathname.substring(1);
+    var urlparts = url.parse(request.url, true);
+    var requestPath = urlparts.pathname.substring(1);   // omit leading slash
     switch (requestPath)
     {
+        case '':
+            serveFile("index.html", response);
+            break;
         case 'random':
             serveRandomEmployee(response);
+            break;
+        case 'answer':
+            serveAnswerReply(response, urlparts.query);
             break;
         default:
             serveFile(requestPath, response);
@@ -168,7 +210,7 @@ function serveRequest(request, response)
 function startServer()
 {
     http.createServer(serveRequest)
-        .listen(config.port, config.hostname,
+        .listen(config.port, //config.hostname,
             function()
             {
                 console.log(`Server running at http://${config.hostname}:${config.port}/`);
