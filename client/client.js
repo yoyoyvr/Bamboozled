@@ -12,12 +12,21 @@ function onNewQuestion(responseText)
     <img src="${question.img}">
     <div id="questionDiv">
         <form id="answerForm">
-            Who's this? <input type="text" name="name"><br>
+            Who's this? <input type="text" name="name" onkeydown="onEnterSubmitAnswer(event)"><br>
             <input type="hidden" name="id" value="${question.id}">
         </form>
         <button onclick="onSubmitAnswer()">SUBMIT</button>
     </div>
     `;
+}
+
+function onEnterSubmitAnswer(e)
+{
+    if (e.keyCode == 13)
+    {
+        e.preventDefault();
+        onSubmitAnswer();
+    }
 }
 
 function onSubmitAnswer()

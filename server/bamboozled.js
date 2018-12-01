@@ -9,11 +9,12 @@ TODO:
 - persistent session on server (in memory to start)
 - Google auth (Blackbird only, and so we know which employee is playing)
 - improved UI on client (React?)
+- bamboozled name & logo title screen
+- improved name matching - bonus points for getting first and last?
 - redis data store for employee directory
 - user bio feature (stored in redis)
 - relationship strength table (MySQL; record correct guesses, number of attempts, etc.)
 - incorrect guesses table
-- name and logo (Bamboom? Bamboozled? BimBamboo?)
 */
 
 /*
@@ -82,46 +83,24 @@ Available employee fields (from Bamboo):
  canUploadPhoto: 0
 */
 
+// Allow modules to be loaded from the current folder.
+module.paths.push('.');
+
 const http = require('http');
 const https = require('https');
 const url = require('url');
 const fs = require('fs');
 const path = require('path');
 
+const bamboo = require('bamboo');
+
 // Global variables.
 const config = JSON.parse(fs.readFileSync('.config', 'utf8'));
-var employeeDirectory = null;
-
-function onEmployeeDirectoryResponse(response)
-{
-      response.setEncoding('utf8');
-      var body = "";
-      response.on('data', function (chunk)
-      {
-          body += chunk;
-      }).on('end', function()
-      {
-        employeeDirectory = JSON.parse(body)['employees'];
-      });
-      response.on('error', console.error);
-}
-
-function getEmployeeDirectory()
-{
-    var options = {
-      host: 'api.bamboohr.com',
-      method: 'GET',
-      path: '/api/gateway.php/' + config.bambooOrganization + '/v1/employees/directory',
-      auth: config.apikey + ':x',
-      headers: {Accept: 'application/json'}
-    };
-    var req = https.request(options, onEmployeeDirectoryResponse).end();
-}
 
 function serveRandomEmployee(response)
 {
-    var r = Math.floor(Math.random() * employeeDirectory.length);
-    var employee = employeeDirectory[r];
+    var r = Math.floor(Math.random() * bambooService.employeeDirectory.length);
+    var employee = bambooService.employeeDirectory[r];
     response.writeHead(200, {'Content-Type': 'application/json'});
     var data = { id: employee.id, img: employee.photoUrl };
     response.write(JSON.stringify(data));
@@ -139,9 +118,9 @@ function serveAnswerReply(response, query)
 
 function findEmployee(id)
 {
-    for (var i = 0; i < employeeDirectory.length; i++)
+    for (var i = 0; i < bambooService.employeeDirectory.length; i++)
     {
-        var employee = employeeDirectory[i];
+        var employee = bambooService.employeeDirectory[i];
         if (employee.id == id)
             return employee;
     }
@@ -154,7 +133,7 @@ function employeeNameMatches(employee, name)
     var upperName = name.toUpperCase();
     var matches =
         (upperName == employee.firstName.toUpperCase()) ||
-        (upperName == employee.preferredName.toUpperCase()) ||
+        ((employee.preferredName != null) && (upperName == employee.preferredName.toUpperCase())) ||
         (upperName == employee.lastName.toUpperCase());
     return matches;
 }
@@ -162,14 +141,15 @@ function employeeNameMatches(employee, name)
 // TODO: this isn't working right
 function employeeFullName(employee)
 {
-    return (employee.preferredName != null) ? (employee.preferredName + " " + employee.lastName) : (employee.firstName + " " + employee.lastName);
+    return ((employee.preferredName != null) && (employee.preferredName != '')) ? (employee.preferredName + " " + employee.lastName) : (employee.firstName + " " + employee.lastName);
 }
 
 function serveFile(requestPath, response)
 {
     console.log("serving " + requestPath);
         
-    const clientRoot = "client";
+    const clientRoot = path.join(path.dirname(__dirname), "client");
+    
     if (requestPath == "")
     {
         requestPath = "index.html";
@@ -219,5 +199,10 @@ function startServer()
             });
 }
 
-getEmployeeDirectory();
+var bob = new bamboo.EmployeeRecord("Bob");
+bob.greet();
+
+var bambooService = new bamboo.Bamboo(config.bamboo);
+bambooService.getEmployeeDirectory()
+
 startServer();
