@@ -1,3 +1,10 @@
+function onLoad()
+{
+    document.getElementById("main").innerHTML =
+         `<button id="startButton" onclick="startSession()">START</button>`;
+    document.getElementById("startButton").focus();
+}
+
 function startSession()
 {
     var url = window.location + "random";
@@ -9,15 +16,16 @@ function onNewQuestion(responseText)
     var question = JSON.parse(responseText);
     document.getElementById("main").innerHTML =
     `
-    <img src="${question.img}">
+    <img src="${question.img}" width=300 height=300>
     <div id="questionDiv">
         <form id="answerForm">
-            Who's this? <input type="text" name="name" onkeydown="onEnterSubmitAnswer(event)"><br>
+            Who's this? <input id="nameText" type="text" name="name" onkeydown="onEnterSubmitAnswer(event)" autofocus><br>
             <input type="hidden" name="id" value="${question.id}">
         </form>
         <button onclick="onSubmitAnswer()">SUBMIT</button>
     </div>
     `;
+    document.getElementById("nameText").focus();
 }
 
 function onEnterSubmitAnswer(e)
@@ -43,8 +51,10 @@ function onAnswerResponse(responseText)
 {
     var response = JSON.parse(responseText);
     document.getElementById("main").innerHTML =
-        (response.correct ? "Yes" : "No") + `, that's ${response.name}!!` +
-         `<br><br><button onclick="startSession()">AGAIN</button>`;
+        `<img src="${response.img}" width=300 height=300><br>` +
+        (response.correct ? "Yes" : "No") + `, it's ${response.name}!!` +
+         `<br><br><button id="againButton" onclick="startSession()">AGAIN</button>`;
+    document.getElementById("againButton").focus();
 }
 
 function onError(statusText)

@@ -1,25 +1,5 @@
-/*
-Available employee fields (from Bamboo):
- id: '12345'
- displayName: 'Doe, Jane'
- firstName: 'Jane'
- lastName: 'Doe'
- preferredName: null
- gender: 'Female'
- jobTitle: 'Senior Programmer'
- workPhone: null
- mobilePhone: '404-123-4567'
- workEmail: 'jane.doe@work.com'
- department: 'Technology'
- location: 'Skunkworks'
- division: 'ABC'
- workPhoneExtension: null
- photoUploaded: true
- photoUrl: 'https://s3.ca-central-1.amazonaws.com/bamboohr-app-ca-central-1-production/images/1234/photos/12345-2-1.jpg'
- canUploadPhoto: 0
-*/
-
 const https = require('https');
+const Employee = require('./Employee');
 
 class Bamboo
 {
@@ -28,9 +8,24 @@ class Bamboo
         this.organization = config.organization;
         this.apikey = config.apikey;
         this.directory = null;
+        
+        this._getDirectory();
     }
     
-    getDirectory()
+    findEmployee(id)
+    {
+        return this.directory[id];
+    }
+    
+    getRandomEmployee()
+    {
+        var r = Math.floor(Math.random() * this.directory._data.length);
+        var id = this.directory._data[r].id;
+        var employee = this.directory[id];
+        return employee;
+    }
+
+    _getDirectory()
     {
         var bamboo = this;  // save for use in callback, since closure on 'this' doesn't do what we need
         
@@ -52,30 +47,27 @@ class Bamboo
                   body += chunk;
               }).on('end', function()
               {
-                bamboo.directory = JSON.parse(body)['employees'];
-                console.log("retrieved " + bamboo.directory.length + " employee records");
+                bamboo.directory = Bamboo._createDirectory(JSON.parse(body)['employees']);
+                console.log("retrieved " + bamboo.directory._data.length + " employee records");
               });
               response.on('error', console.error);
             }
         ).end();
     }
-}
-
-class EmployeeRecord
-{
-    constructor(name)
-    {
-        this.name = name;
-    }
     
-    greet()
+    static _createDirectory(data)
     {
-        console.log("Hello " + this.name);
+        var directory = {};
+        for (var i = 0; i < data.length; i++)
+        {
+            var employee = new Employee(data[i]);
+            directory[employee.id] = employee;
+        }
+        
+        directory._data = data;
+        
+        return directory;
     }
 }
 
-module.exports =
-{
-    Bamboo: Bamboo,
-    EmployeeRecord: EmployeeRecord
-}
+module.exports = Bamboo;

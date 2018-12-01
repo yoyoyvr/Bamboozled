@@ -11,7 +11,7 @@ TODO:
 - improved UI on client (React?)
 - bamboozled name & logo title screen
 - improved name matching - bonus points for getting first and last?
-- redis data store for employee directory
+- redis data store for employee directory (cache previous server run, in case of Bamboo API error)
 - user bio feature (stored in redis)
 - relationship strength table (MySQL; record correct guesses, number of attempts, etc.)
 - incorrect guesses table
@@ -71,15 +71,44 @@ const url = require('url');
 const fs = require('fs');
 const path = require('path');
 
-const bambooapi = require('bamboo');
+const Bamboo = require('bamboo/Bamboo');
 
 // Global variables.
 var bamboo = null;
 
+function startServer(hostname, port)
+{
+    http.createServer(serveRequest)
+        .listen(port, //hostname,
+            function()
+            {
+                console.log(`server running at http://${hostname}:${port}/`);
+            });
+}
+
+function serveRequest(request, response)
+{
+    var urlparts = url.parse(request.url, true);
+    var requestPath = urlparts.pathname.substring(1);   // omit leading slash
+    switch (requestPath)
+    {
+        case '':
+            serveFile("index.html", response);
+            break;
+        case 'random':
+            serveRandomEmployee(response);
+            break;
+        case 'answer':
+            serveAnswerReply(response, urlparts.query);
+            break;
+        default:
+            serveFile(requestPath, response);
+    }
+}
+
 function serveRandomEmployee(response)
 {
-    var r = Math.floor(Math.random() * bamboo.directory.length);
-    var employee = bamboo.directory[r];
+    var employee = bamboo.getRandomEmployee();
     response.writeHead(200, {'Content-Type': 'application/json'});
     var data = { id: employee.id, img: employee.photoUrl };
     response.write(JSON.stringify(data));
@@ -88,39 +117,11 @@ function serveRandomEmployee(response)
 
 function serveAnswerReply(response, query)
 {
-    var employee = findEmployee(query.id);
+    var employee = bamboo.findEmployee(query.id);
     response.writeHead(200, {'Content-Type': 'application/json'});
-    var data = { id: employee.id, name: employeeFullName(employee), correct: employeeNameMatches(employee, query.name) };
+    var data = { id: employee.id, img: employee.photoUrl, name: employee.fullName, correct: employee.nameMatches(query.name) };
     response.write(JSON.stringify(data));
     response.end();
-}
-
-function findEmployee(id)
-{
-    for (var i = 0; i < bamboo.directory.length; i++)
-    {
-        var employee = bamboo.directory[i];
-        if (employee.id == id)
-            return employee;
-    }
-    
-    return null;
-}
-
-function employeeNameMatches(employee, name)
-{
-    var upperName = name.toUpperCase();
-    var matches =
-        (upperName == employee.firstName.toUpperCase()) ||
-        ((employee.preferredName != null) && (upperName == employee.preferredName.toUpperCase())) ||
-        (upperName == employee.lastName.toUpperCase());
-    return matches;
-}
-
-// TODO: this isn't working right
-function employeeFullName(employee)
-{
-    return ((employee.preferredName != null) && (employee.preferredName != '')) ? (employee.preferredName + " " + employee.lastName) : (employee.firstName + " " + employee.lastName);
 }
 
 function serveFile(requestPath, response)
@@ -148,42 +149,10 @@ function serveFile(requestPath, response)
     }
 }
 
-function serveRequest(request, response)
-{
-    var urlparts = url.parse(request.url, true);
-    var requestPath = urlparts.pathname.substring(1);   // omit leading slash
-    switch (requestPath)
-    {
-        case '':
-            serveFile("index.html", response);
-            break;
-        case 'random':
-            serveRandomEmployee(response);
-            break;
-        case 'answer':
-            serveAnswerReply(response, urlparts.query);
-            break;
-        default:
-            serveFile(requestPath, response);
-    }
-}
-
-function startServer(hostname, port)
-{
-    http.createServer(serveRequest)
-        .listen(port, //hostname,
-            function()
-            {
-                console.log(`Server running at http://${hostname}:${port}/`);
-            });
-}
-
 function main()
 {
     const config = JSON.parse(fs.readFileSync('.config', 'utf8'));
-    bamboo = new bambooapi.Bamboo(config.bamboo);
-    bamboo.getDirectory()
-
+    bamboo = new Bamboo(config.bamboo);
     startServer(config.hostname, config.port);
 }
 
