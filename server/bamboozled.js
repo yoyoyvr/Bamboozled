@@ -165,6 +165,7 @@ function shuffle(a)
     return a;
 }
 
+// TODO: bring back random functionality (just needs client I think)
 function serveRandomEmployee(response)
 {
     var employee = bamboo.getRandomEmployee();
