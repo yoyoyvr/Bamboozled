@@ -1,13 +1,19 @@
 function onLoad()
 {
     document.getElementById("main").innerHTML =
-         `<button id="startButton" onclick="startSession()">START</button>`;
+         `<button id="startButton" onclick="startSession()">PLAY</button>`;
     document.getElementById("startButton").focus();
 }
 
 function startSession()
 {
-    var url = window.location + "random";
+    var url = window.location + "play";
+    httpGet(url, onNewQuestion, onError);
+}
+
+function continueSession(id)
+{
+    var url = window.location + `continue?id=${id}`;
     httpGet(url, onNewQuestion, onError);
 }
 
@@ -43,28 +49,32 @@ function onSubmitAnswer()
     var id = form.get('id');
     var name = form.get('name');
     
-    var url = `${window.location}answer?id=${id}&name=${name}`;
+    var url = window.location + `answer?id=${id}&name=${name}`;
     httpGet(url, onAnswerResponse, onError);
 }
 
 function onAnswerResponse(responseText)
 {
     var response = JSON.parse(responseText);
+    var right = response.right;
+    var wrong = response.wrong;
+    var total = response.total;
+    var sofar = right + wrong;
+    var remaining = total - sofar;
+    
     document.getElementById("main").innerHTML =
         `<img src="${response.img}" width=300 height=300><br>` +
         (response.correct ? "Yes" : "No") + `, it's ${response.name}!!` +
-         `<br><br><button id="againButton" onclick="startSession()">AGAIN</button>`;
-    document.getElementById("againButton").focus();
+        `<br><br>Score: ${right}/${sofar} (${remaining} remaining)` +
+        (remaining > 0
+            ? `<br><br><button id="nextButton" onclick="continueSession(${response.id})">NEXT</button>`
+            : "<br><br>Thanks for playing!!");
+    document.getElementById("nextButton").focus();
 }
 
 function onError(statusText)
 {
     document.getElementById("main").innerHTML = statusText;
-}
-
-function continueSession()
-{
-    document.getElementById("main").innerHTML = "<button onclick=\"endSession()\">END</button>";
 }
 
 function endSession()

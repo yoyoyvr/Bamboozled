@@ -17,10 +17,15 @@ class Bamboo
         return this.directory[id];
     }
     
+    getEmployeeIDs()
+    {
+        return Object.keys(this.directory);
+    }
+    
     getRandomEmployee()
     {
-        var r = Math.floor(Math.random() * this.directory._data.length);
-        var id = this.directory._data[r].id;
+        var r = Math.floor(Math.random() * this._directoryData.length);
+        var id = this._directoryData[r].id;
         var employee = this.directory[id];
         return employee;
     }
@@ -47,8 +52,9 @@ class Bamboo
                   body += chunk;
               }).on('end', function()
               {
-                bamboo.directory = Bamboo._createDirectory(JSON.parse(body)['employees']);
-                console.log("retrieved " + bamboo.directory._data.length + " employee records");
+                bamboo._directoryData = JSON.parse(body)['employees'];
+                bamboo.directory = Bamboo._createDirectory(bamboo._directoryData);
+                console.log("retrieved " + bamboo._directoryData.length + " employee records");
               });
               response.on('error', console.error);
             }
@@ -63,8 +69,6 @@ class Bamboo
             var employee = new Employee(data[i]);
             directory[employee.id] = employee;
         }
-        
-        directory._data = data;
         
         return directory;
     }

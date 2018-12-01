@@ -62,19 +62,18 @@ https://www.twilio.com/blog/2017/08/http-requests-in-node-js.html
   https://www.npmjs.com/package/passport-google-oauth2
 */
 
-// Allow modules to be loaded from the current folder.
-module.paths.push('.');
-
 const http = require('http');
 const https = require('https');
 const url = require('url');
 const fs = require('fs');
 const path = require('path');
 
-const Bamboo = require('bamboo/Bamboo');
+const Bamboo = require('./bamboo/Bamboo');
 
 // Global variables.
 var bamboo = null;
+var sessionCount = 0;
+var sessions = {};
 
 function startServer(hostname, port)
 {
@@ -95,6 +94,12 @@ function serveRequest(request, response)
         case '':
             serveFile("index.html", response);
             break;
+        case 'play':
+            startPlaySession(response);
+            break;
+        case 'continue':
+            continuePlaySession(response, urlparts.query.id);
+            break;
         case 'random':
             serveRandomEmployee(response);
             break;
@@ -104,6 +109,60 @@ function serveRequest(request, response)
         default:
             serveFile(requestPath, response);
     }
+}
+
+function startPlaySession(response)
+{
+    var sessionID = (++sessionCount << 10) + Math.floor(Math.random() * 1024);
+    sessions[sessionID] =
+    {
+        id: sessionID,
+        employeeIDs: shuffle(bamboo.getEmployeeIDs()).slice(0,10),  // TODO: decide on game length
+        index: 0,
+        right: 0,
+        wrong: 0
+    };
+    continuePlaySession(response, sessionID);
+}
+
+function continuePlaySession(response, sessionID)
+{
+    // TODO: error handling if session no longer exists
+    var session = sessions[sessionID];
+    if (session.index < session.employeeIDs.length)
+    {
+        var employee = bamboo.findEmployee(session.employeeIDs[session.index]);
+        response.writeHead(200, {'Content-Type': 'application/json'});
+        var data =
+        {
+            id: sessionID,
+            img: employee.photoUrl,
+            total: session.employeeIDs.length,
+            right: session.right,
+            wrong: session.wrong
+        };
+        response.write(JSON.stringify(data));
+        response.end();
+    }
+    else
+    {
+        // TODO: tell user their score - or handle this on client
+    }
+}
+
+// From https://stackoverflow.com/a/6274381/503688
+// https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#The_modern_algorithm
+function shuffle(a)
+{
+    var j, x, i;
+    for (i = a.length - 1; i > 0; i--)
+    {
+        j = Math.floor(Math.random() * (i + 1));
+        x = a[i];
+        a[i] = a[j];
+        a[j] = x;
+    }
+    return a;
 }
 
 function serveRandomEmployee(response)
@@ -117,9 +176,28 @@ function serveRandomEmployee(response)
 
 function serveAnswerReply(response, query)
 {
-    var employee = bamboo.findEmployee(query.id);
+    var session = sessions[query.id];
+    var employee = bamboo.findEmployee(session.employeeIDs[session.index++]);
+    var correct = employee.nameMatches(query.name);
+    if (correct)
+    {
+        session.right++;
+    }
+    else
+    {
+        session.wrong++;
+    }
     response.writeHead(200, {'Content-Type': 'application/json'});
-    var data = { id: employee.id, img: employee.photoUrl, name: employee.fullName, correct: employee.nameMatches(query.name) };
+    var data =
+    {
+        id: session.id,
+        img: employee.photoUrl,
+        name: employee.fullName,
+        correct: correct,
+        total: session.employeeIDs.length,
+        right: session.right,
+        wrong: session.wrong
+    };
     response.write(JSON.stringify(data));
     response.end();
 }
