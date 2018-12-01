@@ -6,7 +6,9 @@ Name-guessing game using BambooHR API.
 TODO:
 - question and answer client/server flow
 - don't crash!!
+- persistent session on server (in memory to start)
 - Google auth (Blackbird only, and so we know which employee is playing)
+- improved UI on client (React?)
 - redis data store for employee directory
 - user bio feature (stored in redis)
 - relationship strength table (MySQL; record correct guesses, number of attempts, etc.)
