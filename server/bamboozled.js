@@ -62,27 +62,6 @@ https://www.twilio.com/blog/2017/08/http-requests-in-node-js.html
   https://www.npmjs.com/package/passport-google-oauth2
 */
 
-/*
-Available employee fields (from Bamboo):
- id: '12345'
- displayName: 'Doe, Jane'
- firstName: 'Jane'
- lastName: 'Doe'
- preferredName: null
- gender: 'Female'
- jobTitle: 'Senior Programmer'
- workPhone: null
- mobilePhone: '404-123-4567'
- workEmail: 'jane.doe@work.com'
- department: 'Technology'
- location: 'Skunkworks'
- division: 'ABC'
- workPhoneExtension: null
- photoUploaded: true
- photoUrl: 'https://s3.ca-central-1.amazonaws.com/bamboohr-app-ca-central-1-production/images/1234/photos/12345-2-1.jpg'
- canUploadPhoto: 0
-*/
-
 // Allow modules to be loaded from the current folder.
 module.paths.push('.');
 
@@ -92,15 +71,15 @@ const url = require('url');
 const fs = require('fs');
 const path = require('path');
 
-const bamboo = require('bamboo');
+const bambooapi = require('bamboo');
 
 // Global variables.
-const config = JSON.parse(fs.readFileSync('.config', 'utf8'));
+var bamboo = null;
 
 function serveRandomEmployee(response)
 {
-    var r = Math.floor(Math.random() * bambooService.employeeDirectory.length);
-    var employee = bambooService.employeeDirectory[r];
+    var r = Math.floor(Math.random() * bamboo.directory.length);
+    var employee = bamboo.directory[r];
     response.writeHead(200, {'Content-Type': 'application/json'});
     var data = { id: employee.id, img: employee.photoUrl };
     response.write(JSON.stringify(data));
@@ -118,9 +97,9 @@ function serveAnswerReply(response, query)
 
 function findEmployee(id)
 {
-    for (var i = 0; i < bambooService.employeeDirectory.length; i++)
+    for (var i = 0; i < bamboo.directory.length; i++)
     {
-        var employee = bambooService.employeeDirectory[i];
+        var employee = bamboo.directory[i];
         if (employee.id == id)
             return employee;
     }
@@ -189,20 +168,23 @@ function serveRequest(request, response)
     }
 }
 
-function startServer()
+function startServer(hostname, port)
 {
     http.createServer(serveRequest)
-        .listen(config.port, //config.hostname,
+        .listen(port, //hostname,
             function()
             {
-                console.log(`Server running at http://${config.hostname}:${config.port}/`);
+                console.log(`Server running at http://${hostname}:${port}/`);
             });
 }
 
-var bob = new bamboo.EmployeeRecord("Bob");
-bob.greet();
+function main()
+{
+    const config = JSON.parse(fs.readFileSync('.config', 'utf8'));
+    bamboo = new bambooapi.Bamboo(config.bamboo);
+    bamboo.getDirectory()
 
-var bambooService = new bamboo.Bamboo(config.bamboo);
-bambooService.getEmployeeDirectory()
+    startServer(config.hostname, config.port);
+}
 
-startServer();
+main();

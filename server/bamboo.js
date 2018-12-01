@@ -1,3 +1,24 @@
+/*
+Available employee fields (from Bamboo):
+ id: '12345'
+ displayName: 'Doe, Jane'
+ firstName: 'Jane'
+ lastName: 'Doe'
+ preferredName: null
+ gender: 'Female'
+ jobTitle: 'Senior Programmer'
+ workPhone: null
+ mobilePhone: '404-123-4567'
+ workEmail: 'jane.doe@work.com'
+ department: 'Technology'
+ location: 'Skunkworks'
+ division: 'ABC'
+ workPhoneExtension: null
+ photoUploaded: true
+ photoUrl: 'https://s3.ca-central-1.amazonaws.com/bamboohr-app-ca-central-1-production/images/1234/photos/12345-2-1.jpg'
+ canUploadPhoto: 0
+*/
+
 const https = require('https');
 
 class Bamboo
@@ -6,10 +27,10 @@ class Bamboo
     {
         this.organization = config.organization;
         this.apikey = config.apikey;
-        this.employeeDirectory = null;
+        this.directory = null;
     }
     
-    getEmployeeDirectory()
+    getDirectory()
     {
         var bamboo = this;  // save for use in callback, since closure on 'this' doesn't do what we need
         
@@ -31,8 +52,8 @@ class Bamboo
                   body += chunk;
               }).on('end', function()
               {
-                bamboo.employeeDirectory = JSON.parse(body)['employees'];
-                console.log("retrieved " + bamboo.employeeDirectory.length + " employee records");
+                bamboo.directory = JSON.parse(body)['employees'];
+                console.log("retrieved " + bamboo.directory.length + " employee records");
               });
               response.on('error', console.error);
             }
