@@ -1,11 +1,18 @@
 <html>
 
 <header><title>Bamboozled</title></header>
+
+<script src="https://apis.google.com/js/platform.js" async defer></script>
+<meta name="google-signin-client_id" content="819622503076-cmk89v9pegdm715ke9dqcasonv11q282.apps.googleusercontent.com">
+
 <script src="client.js" defer></script>
 
 <body onload="onLoad()">
     <div id="title">BAMBOOZLED!!</div>
     <div id="main"></div>
+    
+    <div class="g-signin2" data-onsuccess="onSignIn" data-onfailure="onSignInError"></div>
+    <a href="#" onclick="signOut();">sign out</a>
 </body>
 
 </html>

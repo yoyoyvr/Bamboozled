@@ -7,7 +7,12 @@ TODO:
 - question and answer client/server flow
 - don't crash!!
 - persistent session on server (in memory to start)
-- Google auth (Blackbird only, and so we know which employee is playing)
+- Google auth
+    - https://www.npmjs.com/package/google-auth-library
+    - create app at Google Developer console - https://console.developers.google.com
+    - created bamboozled-604 under blackbirdinteractive organization, using my BBI google account
+    - or can it all be client side? https://developers.google.com/identity/sign-in/web/sign-in
+    - Blackbird only, and so we know which employee is playing
 - improved UI on client (React?)
 - bamboozled name & logo title screen
 - improved name matching - bonus points for getting first and last?
@@ -67,6 +72,7 @@ const https = require('https');
 const url = require('url');
 const fs = require('fs');
 const path = require('path');
+const querystring = require('querystring');
 
 const Bamboo = require('./bamboo/Bamboo');
 
@@ -89,13 +95,39 @@ function serveRequest(request, response)
 {
     var urlparts = url.parse(request.url, true);
     var requestPath = urlparts.pathname.substring(1);   // omit leading slash
+
+    console.log(`${request.method}: ${requestPath}`);
+    if (request.method === 'POST')
+    {
+        // TODO: in this case requestPath is empty and we're not getting a body ... 
+        let body = '';
+        request.on('data', chunk => {
+            body += chunk.toString();
+        });
+        request.on('end', () => {
+            body = querystring.parse(body);
+            serveParsedRequest(requestPath, urlparts, body, response);
+        });
+    }
+    else
+    {
+        serveParsedRequest(requestPath, urlparts, null, response);
+    }
+}
+
+function serveParsedRequest(requestPath, urlparts, body, response)
+{
     switch (requestPath)
     {
         case '':
             serveFile("index.html", response);
             break;
+        case 'connect':
+            console.log(body);
+            createPlaySession(response, urlparts.query.idtoken);
+            break;
         case 'play':
-            startPlaySession(response);
+            startPlaySession(response, urlparts.query.id);
             break;
         case 'continue':
             continuePlaySession(response, urlparts.query.id);
@@ -111,8 +143,11 @@ function serveRequest(request, response)
     }
 }
 
-function startPlaySession(response)
+function createPlaySession(response, idtoken)
 {
+    // TODO: validate google ID token
+    console.log(idtoken);
+    
     var sessionID = (++sessionCount << 10) + Math.floor(Math.random() * 1024);
     sessions[sessionID] =
     {
@@ -122,6 +157,11 @@ function startPlaySession(response)
         right: 0,
         wrong: 0
     };
+}
+
+function startPlaySession(response, sessionID)
+{
+    // TODO: anything special to do on start of play session?
     continuePlaySession(response, sessionID);
 }
 
@@ -230,6 +270,7 @@ function serveFile(requestPath, response)
 
 function main()
 {
+    // TODO: require(`./.config`) might simplify this
     const config = JSON.parse(fs.readFileSync('.config', 'utf8'));
     bamboo = new Bamboo(config.bamboo);
     startServer(config.hostname, config.port);

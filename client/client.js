@@ -1,13 +1,67 @@
+// Globals.
+var googleProfile;
+var googleIDToken;
+
+// https://developers.google.com/identity/sign-in/web/reference
+
 function onLoad()
 {
+    //showPlayButton();
+}
+
+function showPlayButton()
+{
+    var name = googleProfile.getName();
     document.getElementById("main").innerHTML =
-         `<button id="startButton" onclick="startSession()">PLAY</button>`;
+        `Hi ${name}!!` +
+        `<button id="startButton" onclick="startSession()">PLAY</button>`;
     document.getElementById("startButton").focus();
+}
+
+function onSignIn(googleUser)
+{
+    googleProfile = googleUser.getBasicProfile();
+    googleIDToken = googleUser.getAuthResponse().id_token;
+
+    // Send the token to the server.
+    // TODO: does this need to be https?
+    var url = window.location + `connect`;
+    var request = new XMLHttpRequest();
+    request.open('POST', url);
+    request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    request.onload = function() {
+        console.log('Signed in as: ' + request.responseText);
+    };
+    request.send('idtoken=' + googleIDToken);
+    
+    showPlayButton();
+
+    //console.log('ID: ' + googleProfile.getId()); // Do not send to your backend! Use an ID token instead. (see below)
+    //console.log('Name: ' + googleProfile.getName());
+    //console.log('Image URL: ' + googleProfile.getImageUrl());
+    //console.log('Email: ' + googleProfile.getEmail()); // This is null if the 'email' scope is not present.
+    
+    // for server-side auth, see https://developers.google.com/identity/sign-in/web/backend-auth
+    // includes nodejs guidance (oohhh, now those other pages make more sense!)
+}
+
+function onSignInError(error)
+{
+    console.log(error);
+}
+
+function signOut()
+{
+    var auth2 = gapi.auth2.getAuthInstance();
+    auth2.signOut().then(function () {
+        console.log('User signed out.');
+    });
 }
 
 function startSession()
 {
-    var url = window.location + "play";
+    // TODO: encode ID token and send via https
+    var url = window.location + `play`;
     httpGet(url, onNewQuestion, onError);
 }
 

@@ -61,4 +61,5 @@ typings/
 .next
 
 # app-specific configuration
-.config
+server/.config
+server/oauth2.keys.json
