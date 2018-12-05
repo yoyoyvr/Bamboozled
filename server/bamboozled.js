@@ -73,22 +73,32 @@ const url = require('url');
 const fs = require('fs');
 const path = require('path');
 const querystring = require('querystring');
+const {OAuth2Client} = require('google-auth-library');
 
 const Bamboo = require('./bamboo/Bamboo');
 
+// App secrets in .config.json, not submitted to version control.
+const config = require('./.config.json');
+
+// OAuth2 configuration downloaded from the Google Developer Console
+const authKeys = require('./.config.oauth2.json');
+
 // Global variables.
-var bamboo = null;
+const bamboo = new Bamboo(config.bamboo);
+const authClient = new OAuth2Client(authKeys.web.client_id);
+
 var sessionCount = 0;
 var sessions = {};
+
 
 function startServer(hostname, port)
 {
     http.createServer(serveRequest)
         .listen(port, //hostname,
-            function()
-            {
-                console.log(`server running at http://${hostname}:${port}/`);
-            });
+        function()
+        {
+            console.log(`server running at http://${hostname}:${port}/`);
+        });
 }
 
 function serveRequest(request, response)
@@ -99,7 +109,6 @@ function serveRequest(request, response)
     console.log(`${request.method}: ${requestPath}`);
     if (request.method === 'POST')
     {
-        // TODO: in this case requestPath is empty and we're not getting a body ... 
         let body = '';
         request.on('data', chunk => {
             body += chunk.toString();
@@ -123,30 +132,38 @@ function serveParsedRequest(requestPath, urlparts, body, response)
             serveFile("index.html", response);
             break;
         case 'connect':
-            console.log(body);
-            createPlaySession(response, urlparts.query.idtoken);
+            createPlaySession(body.idtoken, response);
             break;
         case 'play':
-            startPlaySession(response, urlparts.query.id);
+            startPlaySession(urlparts.query, response);
             break;
         case 'continue':
-            continuePlaySession(response, urlparts.query.id);
+            continuePlaySession(urlparts.query, response);
             break;
         case 'random':
-            serveRandomEmployee(response);
+            serveRandomEmployee(urlparts.query, response);
             break;
         case 'answer':
-            serveAnswerReply(response, urlparts.query);
+            serveAnswerReply(urlparts.query, response);
             break;
         default:
             serveFile(requestPath, response);
     }
 }
 
-function createPlaySession(response, idtoken)
+function createPlaySession(idtoken, response)
 {
-    // TODO: validate google ID token
-    console.log(idtoken);
+    // validate google ID token and get user info
+    validateIDToken(idtoken)
+    .catch(e =>
+    {
+        console.log(e);
+    })
+    .then(userinfo =>
+    {
+        // NOTE: we'll get here after catching an exception with userinfo undefined
+        console.log("USERINFO: " + JSON.stringify(userinfo));
+    });
     
     var sessionID = (++sessionCount << 10) + Math.floor(Math.random() * 1024);
     sessions[sessionID] =
@@ -159,16 +176,16 @@ function createPlaySession(response, idtoken)
     };
 }
 
-function startPlaySession(response, sessionID)
+function startPlaySession(query, response)
 {
     // TODO: anything special to do on start of play session?
-    continuePlaySession(response, sessionID);
+    continuePlaySession(query, response);
 }
 
-function continuePlaySession(response, sessionID)
+function continuePlaySession(query, response)
 {
     // TODO: error handling if session no longer exists
-    var session = sessions[sessionID];
+    var session = sessions[query.id];
     if (session.index < session.employeeIDs.length)
     {
         var employee = bamboo.findEmployee(session.employeeIDs[session.index]);
@@ -206,7 +223,7 @@ function shuffle(a)
 }
 
 // TODO: bring back random functionality (just needs client I think)
-function serveRandomEmployee(response)
+function serveRandomEmployee(query, response)
 {
     var employee = bamboo.getRandomEmployee();
     response.writeHead(200, {'Content-Type': 'application/json'});
@@ -215,7 +232,7 @@ function serveRandomEmployee(response)
     response.end();
 }
 
-function serveAnswerReply(response, query)
+function serveAnswerReply(query, response)
 {
     var session = sessions[query.id];
     var employee = bamboo.findEmployee(session.employeeIDs[session.index++]);
@@ -268,11 +285,27 @@ function serveFile(requestPath, response)
     }
 }
 
+async function validateIDToken(idtoken)
+{
+    const ticket = await authClient.verifyIdToken({
+        idToken: idtoken,
+        audience: authKeys.web.client_id,
+    });
+
+    var payload = ticket.getPayload();
+    
+    // Validate domain.
+    if (payload.hd == config.domain)
+    {
+        throw new Error(`invalid domain ${payload.hd}; expected ${config.domain}`);
+    }
+
+    console.log("PAYLOAD: " + JSON.stringify(payload));
+    return payload;
+}
+
 function main()
 {
-    // TODO: require(`./.config`) might simplify this
-    const config = JSON.parse(fs.readFileSync('.config', 'utf8'));
-    bamboo = new Bamboo(config.bamboo);
     startServer(config.hostname, config.port);
 }
 

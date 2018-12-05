@@ -60,6 +60,5 @@ typings/
 # next.js build output
 .next
 
-# app-specific configuration
-server/.config
-server/oauth2.keys.json
+# app-specific configuration, may include secrets and credentials
+.config*.json
