@@ -31,6 +31,11 @@ class Employee
         return this._data.id;
     }
     
+    get email()
+    {
+        return this._data.workEmail;
+    }
+    
     get photoUrl()
     {
         return this._data.photoUrl;
@@ -54,6 +59,11 @@ class Employee
             (this.hasPreferredName && (upperName == this._data.preferredName.toUpperCase())) ||
             (upperName == this._data.lastName.toUpperCase());
         return matches;
+    }
+    
+    toString()
+    {
+        return JSON.stringify(this);
     }
 }
 

@@ -20,6 +20,7 @@ TODO:
 - user bio feature (stored in redis)
 - relationship strength table (MySQL; record correct guesses, number of attempts, etc.)
 - incorrect guesses table
+- extract google auth (client and server) into helper scripts
 */
 
 /*
@@ -73,6 +74,11 @@ const url = require('url');
 const fs = require('fs');
 const path = require('path');
 const querystring = require('querystring');
+
+// Note: need to "npm install google-auth-library"
+//     + google-auth-library@2.0.1
+//     added 29 packages from 32 contributors and audited 50 packages
+// So many dependencies!!
 const {OAuth2Client} = require('google-auth-library');
 
 const Bamboo = require('./bamboo/Bamboo');
@@ -131,14 +137,11 @@ function serveParsedRequest(requestPath, urlparts, body, response)
         case '':
             serveFile("index.html", response);
             break;
-        case 'connect':
+        case 'play':
             createPlaySession(body.idtoken, response);
             break;
-        case 'play':
-            startPlaySession(urlparts.query, response);
-            break;
         case 'continue':
-            continuePlaySession(urlparts.query, response);
+            continuePlaySession(urlparts.query.id, response);
             break;
         case 'random':
             serveRandomEmployee(urlparts.query, response);
@@ -161,38 +164,45 @@ function createPlaySession(idtoken, response)
     })
     .then(userinfo =>
     {
-        // NOTE: we'll get here after catching an exception with userinfo undefined
         console.log("USERINFO: " + JSON.stringify(userinfo));
+        // if there was an exception we still get here, so need to handle undefined user info
+        if (userinfo)
+        {
+            var employee = bamboo.findEmployeeByEmail(userinfo.email);
+            
+            // TODO: decide how to generate session ID's to avoid clients spoofing sessions - for now it's an increasing count, plus a random number
+            var sessionid = (++sessionCount << 10) + Math.floor(Math.random() * 1024);
+            console.log(`CREATING SESSION ${sessionid} for ${employee.fullName}`);
+            // TODO: decide on game modes, number of questions, etc.
+            // TODO: don't ask user for their own name
+            sessions[sessionid] =
+            {
+                id: sessionid,
+                user: employee.id,
+                employeeIDs: shuffle(bamboo.getEmployeeIDs()).slice(0,10),
+                index: 0,
+                right: 0,
+                wrong: 0
+            };
+            
+            continuePlaySession(sessionid, response);
+        }
     });
+}
+
+function continuePlaySession(sessionid, response)
+{
+    console.log(`CONTINUING SESSION ${sessionid}`);
     
-    var sessionID = (++sessionCount << 10) + Math.floor(Math.random() * 1024);
-    sessions[sessionID] =
-    {
-        id: sessionID,
-        employeeIDs: shuffle(bamboo.getEmployeeIDs()).slice(0,10),  // TODO: decide on game length
-        index: 0,
-        right: 0,
-        wrong: 0
-    };
-}
-
-function startPlaySession(query, response)
-{
-    // TODO: anything special to do on start of play session?
-    continuePlaySession(query, response);
-}
-
-function continuePlaySession(query, response)
-{
     // TODO: error handling if session no longer exists
-    var session = sessions[query.id];
+    var session = sessions[sessionid];
     if (session.index < session.employeeIDs.length)
     {
-        var employee = bamboo.findEmployee(session.employeeIDs[session.index]);
+        var employee = bamboo.getEmployee(session.employeeIDs[session.index]);
         response.writeHead(200, {'Content-Type': 'application/json'});
         var data =
         {
-            id: sessionID,
+            id: sessionid,
             img: employee.photoUrl,
             total: session.employeeIDs.length,
             right: session.right,
@@ -235,7 +245,7 @@ function serveRandomEmployee(query, response)
 function serveAnswerReply(query, response)
 {
     var session = sessions[query.id];
-    var employee = bamboo.findEmployee(session.employeeIDs[session.index++]);
+    var employee = bamboo.getEmployee(session.employeeIDs[session.index++]);
     var correct = employee.nameMatches(query.name);
     if (correct)
     {
@@ -285,6 +295,7 @@ function serveFile(requestPath, response)
     }
 }
 
+// for more info, see https://developers.google.com/identity/sign-in/web/backend-auth (includes nodejs guidance)
 async function validateIDToken(idtoken)
 {
     const ticket = await authClient.verifyIdToken({
@@ -295,12 +306,11 @@ async function validateIDToken(idtoken)
     var payload = ticket.getPayload();
     
     // Validate domain.
-    if (payload.hd == config.domain)
+    if (payload.hd != config.domain)
     {
         throw new Error(`invalid domain ${payload.hd}; expected ${config.domain}`);
     }
 
-    console.log("PAYLOAD: " + JSON.stringify(payload));
     return payload;
 }
 

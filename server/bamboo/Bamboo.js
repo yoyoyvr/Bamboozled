@@ -12,9 +12,21 @@ class Bamboo
         this._getDirectory();
     }
     
-    findEmployee(id)
+    getEmployee(id)
     {
         return this.directory[id];
+    }
+    
+    findEmployeeByEmail(email)
+    {
+        for (var id in this.directory)
+        {
+            var employee = this.directory[id];
+            if (employee.email == email)
+            {
+                return employee;
+            }
+        }
     }
     
     getEmployeeIDs()
@@ -52,6 +64,7 @@ class Bamboo
                   body += chunk;
               }).on('end', function()
               {
+                // TODO: should add error handling (and cache the directory data)
                 bamboo._directoryData = JSON.parse(body)['employees'];
                 bamboo.directory = Bamboo._createDirectory(bamboo._directoryData);
                 console.log("retrieved " + bamboo._directoryData.length + " employee records");
