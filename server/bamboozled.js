@@ -1,4 +1,4 @@
-/*
+﻿/*
 ==Bamboozled==
 
 Name-guessing game using BambooHR API.
@@ -92,6 +92,7 @@ const authKeys = require('./.config.oauth2.json');
 // Global variables.
 const bamboo = new Bamboo(config.bamboo);
 const authClient = new OAuth2Client(authKeys.web.client_id);
+const guessLog = fs.createWriteStream("./logs/guesses.log", {flags:'a'});
 
 var sessionCount = 0;
 var sessions = {};
@@ -174,12 +175,11 @@ function createPlaySession(idtoken, response)
             var sessionid = (++sessionCount << 10) + Math.floor(Math.random() * 1024);
             console.log(`CREATING SESSION ${sessionid} for ${employee.fullName}`);
             // TODO: decide on game modes, number of questions, etc.
-            // TODO: don't ask user for their own name
             sessions[sessionid] =
             {
                 id: sessionid,
                 user: employee.id,
-                employeeIDs: shuffle(bamboo.getEmployeeIDs()).slice(0,10),
+                employeeIDs: bamboo.getRandomEmployeeIDs(10),
                 index: 0,
                 right: 0,
                 wrong: 0
@@ -193,9 +193,10 @@ function createPlaySession(idtoken, response)
 function continuePlaySession(sessionid, response)
 {
     console.log(`CONTINUING SESSION ${sessionid}`);
-    
-    // TODO: error handling if session no longer exists
-    var session = sessions[sessionid];
+
+    var session = getSession(sessionid, response);
+    if (!session)
+        return;
     if (session.index < session.employeeIDs.length)
     {
         var employee = bamboo.getEmployee(session.employeeIDs[session.index]);
@@ -217,19 +218,20 @@ function continuePlaySession(sessionid, response)
     }
 }
 
-// From https://stackoverflow.com/a/6274381/503688
-// https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#The_modern_algorithm
-function shuffle(a)
+function getSession(sessionid, response)
 {
-    var j, x, i;
-    for (i = a.length - 1; i > 0; i--)
+    var session = sessions[sessionid];
+    if (!session)
     {
-        j = Math.floor(Math.random() * (i + 1));
-        x = a[i];
-        a[i] = a[j];
-        a[j] = x;
+        console.log(`SESSION NOT FOUND: ${sessionid}`);
+        
+        // TODO: error handling on client if session no longer exists
+        response.writeHead(404, {'Content-Type': 'application/json'});
+        response.write('{"error": "session not found"}');
+        response.end();
     }
-    return a;
+    
+    return session;
 }
 
 // TODO: bring back random functionality (just needs client I think)
@@ -244,9 +246,16 @@ function serveRandomEmployee(query, response)
 
 function serveAnswerReply(query, response)
 {
-    var session = sessions[query.id];
-    var employee = bamboo.getEmployee(session.employeeIDs[session.index++]);
+    var session = getSession(query.id, response);
+    if (!session)
+        return;
+    
+    var employee = bamboo.getEmployee(session.employeeIDs[session.index]);
     var correct = employee.nameMatches(query.name);
+    
+    logGuess(session.user, session.employeeIDs[session.index], query.name, correct);
+    
+    session.index++;
     if (correct)
     {
         session.right++;
@@ -269,6 +278,14 @@ function serveAnswerReply(query, response)
     response.write(JSON.stringify(data));
     response.end();
 }
+
+// TODO: create a log class to wrap this
+function logGuess(guesserid, guessingid, guess, correct)
+{
+    const unixtime = Math.floor((new Date()).getTime() / 1000);
+    guessLog.write(`${unixtime},${guesserid},${guessingid},"${guess}",${correct}\n`);
+}
+
 
 function serveFile(requestPath, response)
 {

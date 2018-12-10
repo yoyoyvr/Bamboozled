@@ -1,3 +1,5 @@
+const normalizer = require('./normalizer');
+
 class Employee
 {
     constructor(data)
@@ -53,11 +55,11 @@ class Employee
     
     nameMatches(name)
     {
-        var upperName = name.toUpperCase();
+        var normalized = normalizer.normalize(name);
         var matches =
-            (upperName == this._data.firstName.toUpperCase()) ||
-            (this.hasPreferredName && (upperName == this._data.preferredName.toUpperCase())) ||
-            (upperName == this._data.lastName.toUpperCase());
+            (normalized == normalizer.normalize(this._data.firstName)) ||
+            (this.hasPreferredName && (normalized == normalizer.normalize(this._data.preferredName))) ||
+            (normalized == normalizer.normalize(this._data.lastName));
         return matches;
     }
     

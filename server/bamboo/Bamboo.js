@@ -34,6 +34,16 @@ class Bamboo
         return Object.keys(this.directory);
     }
     
+    getRandomEmployeeIDs(count)
+    {
+        var ids = Bamboo._shuffle(this.getEmployeeIDs());
+        if (count)
+        {
+            ids = ids.slice(0, count);
+        }
+        return ids;
+    }
+    
     getRandomEmployee()
     {
         var r = Math.floor(Math.random() * this._directoryData.length);
@@ -42,6 +52,21 @@ class Bamboo
         return employee;
     }
 
+    // From https://stackoverflow.com/a/6274381/503688
+    // https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#The_modern_algorithm
+    static _shuffle(a)
+    {
+        var j, x, i;
+        for (i = a.length - 1; i > 0; i--)
+        {
+            j = Math.floor(Math.random() * (i + 1));
+            x = a[i];
+            a[i] = a[j];
+            a[j] = x;
+        }
+        return a;
+    }
+    
     _getDirectory()
     {
         var bamboo = this;  // save for use in callback, since closure on 'this' doesn't do what we need
