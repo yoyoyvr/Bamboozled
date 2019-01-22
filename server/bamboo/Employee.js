@@ -58,50 +58,48 @@ class Employee
         return (this._data.preferredName != null) && (this._data.preferredName != '');
     }
     
-    // Matching rules:
-    // mode = normal:
+    // Partial name match:
     // - name is split on spaces, each part must match
     // - can match first name, last name, or preferred name
     // - matching is done in lower case with accents stripped
-    // mode = beast:
-    // - name must match "firstname lastname" (preferred name is ignored)
-    // - matching is done in lower case with accents stripped
-    nameMatches(name, mode)
+    nameMatches(name)
     {
         var matches = false;
         var guess = normalizer.normalize(name);
-        switch (mode)
+        var guessparts = guess.split(" ");
+        if (guessparts.length > 0)
         {
-            case "normal":
-                var guessparts = guess.split(" ");
-                if (guessparts.length > 0)
+            var allnames = normalizer.normalize(this._data.firstName) + " " + normalizer.normalize(this._data.lastName);
+            if (this.hasPreferredName)
+            {
+                allnames = allnames + " " + normalizer.normalize(this._data.preferredName);
+            }
+            var nameparts = allnames.split(" ");
+            matches = true;
+            for (var i = 0; i < guessparts.length; ++i)
+            {
+                var guesspart = guessparts[i];
+                var partmatches = false;
+                for (var j = 0; j < nameparts.length; ++j)
                 {
-                    var nameparts = [normalizer.normalize(this._data.firstName), normalizer.normalize(this._data.lastName)];
-                    if (this.hasPreferredName)
-                    {
-                        nameparts.push(normalizer.normalize(this._data.preferredName));
-                    }
-                    matches = true;
-                    for (var i = 0; i < guessparts.length; ++i)
-                    {
-                        var guesspart = guessparts[i];
-                        var partmatches = false;
-                        for (var j = 0; j < nameparts.length; ++j)
-                        {
-                            var namepart = nameparts[j];
-                            partmatches = partmatches || (guesspart == namepart);
-                        }
-                        
-                        matches = matches && partmatches;
-                    }
+                    var namepart = nameparts[j];
+                    partmatches = partmatches || (guesspart == namepart);
                 }
-                break;
-            case "beast":
-                var fullname = normalizer.normalize(this._data.firstName) + " " + normalizer.normalize(this._data.lastName);
-                matches = (guess == fullname);
-                break;
+                
+                matches = matches && partmatches;
+            }
         }
         return matches;
+    }
+    
+    // Full name match:
+    // - name must match "firstname lastname" (preferred name is ignored)
+    // - matching is done in lower case with accents stripped
+    fullNameMatches(name)
+    {
+        var guess = normalizer.normalize(name);
+        var fullname = normalizer.normalize(this._data.firstName) + " " + normalizer.normalize(this._data.lastName);
+        return (guess == fullname);
     }
     
     toString()

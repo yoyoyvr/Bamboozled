@@ -93,6 +93,7 @@ const authKeys = require('./.config.oauth2.json');
 // Global variables.
 const bamboo = new Bamboo(config.bamboo);
 const authClient = new OAuth2Client(authKeys.web.client_id);
+fs.existsSync("./logs") || fs.mkdirSync("./logs");
 const guessLog = fs.createWriteStream("./logs/guesses.log", {flags:'a'});
 
 var sessionCount = 0;
@@ -101,12 +102,28 @@ var sessions = {};
 
 function startServer(hostname, port)
 {
-    http.createServer(serveRequest)
+    http.createServer(tryServeRequest)
         .listen(port, //hostname,
         function()
         {
             console.log(`server running at http://${hostname}:${port}/`);
         });
+}
+
+function tryServeRequest(request, response)
+{
+    try
+    {
+        serveRequest(request, response);
+    }
+    catch (error)
+    {
+        console.error(error);
+        
+        response.writeHead(404, {'Content-Type': 'application/json'});
+        response.write(`{"error": "${error.message}"}`);
+        response.end();
+    }
 }
 
 function serveRequest(request, response)
@@ -216,7 +233,8 @@ function continuePlaySession(sessionid, response)
             img: employee.photoUrl,
             total: session.employeeIDs.length,
             right: session.right,
-            wrong: session.wrong
+            wrong: session.wrong,
+            mode: session.mode
         };
         response.write(JSON.stringify(data));
         response.end();
@@ -260,7 +278,7 @@ function serveAnswerReply(query, response)
         return;
     
     var employee = bamboo.getEmployee(session.employeeIDs[session.index]);
-    var correct = employee.nameMatches(query.name, session.mode);
+    var correct = (session.mode == "beast" ? employee.fullNameMatches(query.name) : employee.nameMatches(query.name));
     
     logGuess(session.user, session.employeeIDs[session.index], query.name, correct);
     
@@ -282,7 +300,8 @@ function serveAnswerReply(query, response)
         correct: correct,
         total: session.employeeIDs.length,
         right: session.right,
-        wrong: session.wrong
+        wrong: session.wrong,
+        mode: session.mode
     };
     response.write(JSON.stringify(data));
     response.end();

@@ -14,18 +14,18 @@ function showPlayButton()
     var name = googleProfile.getName();
     document.getElementById("main").innerHTML =
         `
-        <br>Hi ${name}!!<br><br>
+        <div class="salutation">Hi ${name}!!</div>
         <form id="gameModeForm">
-            <label>Game Length</label><br>
+            <label>Game Length</label>
             <input type="radio" name="gameLength" value="10" checked> 10
             <input type="radio" name="gameLength" value="20"> 20
             <input type="radio" name="gameLength" value="50"> 50
             <input type="radio" name="gameLength" value="everyone"> Everyone<br><br>
-            <label>Difficulty</label><br>
+            <label>Difficulty</label>
             <input type="radio" name="gameMode" value="normal" checked> Normal
             <input type="radio" name="gameMode" value="beast"> Beast Mode<br>
         </form>
-        <button id="startButton" onclick="startSession()">PLAY</button>
+        <button id="startButton" class="button playButton" onclick="startSession()">PLAY</button>
         `;
     document.getElementById("startButton").focus();
 }
@@ -85,15 +85,18 @@ function continueSession(id)
 function onNewQuestion(responseText)
 {
     var question = JSON.parse(responseText);
+    var scoreText = getScoreText(question);
     document.getElementById("main").innerHTML =
-    `
-    <img src="${question.img}" width=300 height=300><br><br>
+    `<img src="${question.img}" width=300 height=300><br>
     <div id="questionDiv">
-        <form id="answerForm">
-            Who's this? <input id="nameText" type="text" name="name" onkeydown="onEnterSubmitAnswer(event)" autofocus><br>
-            <input type="hidden" name="id" value="${question.id}">
-        </form>
-        <button onclick="onSubmitAnswer()">SUBMIT</button>
+        <div class="question">
+            <form id="answerForm">
+                Who's this? <input id="nameText" type="text" name="name" onkeydown="onEnterSubmitAnswer(event)" autofocus><br>
+                <input type="hidden" name="id" value="${question.id}">
+            </form>
+        </div>
+        ${scoreText}
+        <br><br><input type="submit" class="button continueButton" onclick="onSubmitAnswer()" value="SUBMIT"></input>
     </div>
     `;
     document.getElementById("nameText").focus();
@@ -121,20 +124,35 @@ function onSubmitAnswer()
 function onAnswerResponse(responseText)
 {
     var response = JSON.parse(responseText);
+    
+    var resultText = (response.correct
+        ? `<div class="correct">Yes, it's ${response.name}!!</div>`
+        : `<div class="incorrect">No, it's ${response.name}!!</div>`);
+    var scoreText = getScoreText(response);
+    var continueText = (response.right + response.wrong < response.total
+        ? `<br><br><input id="nextButton" type="submit" class="button continueButton" onclick="continueSession(${response.id})" value="NEXT"></input>`
+        : `<br><br><input id="againButton" type="button" class="button playButton" onclick="showPlayButton()" value="PLAY AGAIN"></input>`);
+    
+    document.getElementById("main").innerHTML =
+        `<img src="${response.img}" width=300 height=300><br>`
+        + resultText
+        + scoreText
+        + continueText;
+    document.getElementById("nextButton").focus();
+}
+
+function getScoreText(response)
+{
     var right = response.right;
     var wrong = response.wrong;
     var total = response.total;
     var sofar = right + wrong;
     var remaining = total - sofar;
     
-    document.getElementById("main").innerHTML =
-        `<img src="${response.img}" width=300 height=300><br><br>` +
-        (response.correct ? "Yes" : "No") + `, it's ${response.name}!!` +
-        `<br><br>Score: ${right}/${sofar} (${remaining} remaining)` +
-        (remaining > 0
-            ? `<br><br><button id="nextButton" onclick="continueSession(${response.id})">NEXT</button>`
-            : "<br><br>Thanks for playing!!");
-    document.getElementById("nextButton").focus();
+    var beastMode = (response.mode == "beast" ? `   <span class="beastMode">Beast Mode</span>` : "");
+    var scoreText = `<div class="score">${right}/${sofar} correct, ${remaining} to go${beastMode}</div>`;
+    
+    return scoreText;
 }
 
 function onError(statusText)
