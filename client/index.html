@@ -1,5 +1,9 @@
 <html>
 
+<head>
+    <link rel="stylesheet" type="text/css" href="bamboozled.css">
+</head>
+
 <header><title>Bamboozled</title></header>
 
 <script src="https://apis.google.com/js/platform.js" async defer></script>
@@ -8,12 +12,14 @@
 <script src="client.js" defer></script>
 
 <body onload="onLoad()">
-    <div id="title">BAMBOOZLED!!</div>
-    <div id="main"></div>
-    
-    <br><hr>
-    <div class="g-signin2" data-onsuccess="onSignIn" data-onfailure="onSignInError"></div>
-    <a href="#" onclick="signOut();">sign out</a>
+    <div id="container">
+        <div id="title">BAMBOOZLED!!</div>
+        <div id="main"></div>
+        <div id="footer">
+            <div class="g-signin2" data-onsuccess="onSignIn" data-onfailure="onSignInError"></div>
+            <a href="#" onclick="signOut();">sign out</a>
+        </div>
+    </div>
 </body>
 
 </html>

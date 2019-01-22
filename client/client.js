@@ -13,8 +13,20 @@ function showPlayButton()
 {
     var name = googleProfile.getName();
     document.getElementById("main").innerHTML =
-        `<br>Hi ${name}!!<br><br>` +
-        `<button id="startButton" onclick="startSession()">PLAY</button>`;
+        `
+        <br>Hi ${name}!!<br><br>
+        <form id="gameModeForm">
+            <label>Game Length</label><br>
+            <input type="radio" name="gameLength" value="10" checked> 10
+            <input type="radio" name="gameLength" value="20"> 20
+            <input type="radio" name="gameLength" value="50"> 50
+            <input type="radio" name="gameLength" value="everyone"> Everyone<br><br>
+            <label>Difficulty</label><br>
+            <input type="radio" name="gameMode" value="normal" checked> Normal
+            <input type="radio" name="gameMode" value="beast"> Beast Mode<br>
+        </form>
+        <button id="startButton" onclick="startSession()">PLAY</button>
+        `;
     document.getElementById("startButton").focus();
 }
 
@@ -46,9 +58,12 @@ function signOut()
 
 function startSession()
 {
+    var gameLength = document.querySelector('input[name="gameLength"]:checked').value;
+    var gameMode = document.querySelector('input[name="gameMode"]:checked').value;
+
     // Send our ID token to the server along with the request to start a game.
     // TODO: should this be https?
-    var url = window.location + `play`;
+    var url = window.location + `play?length=${gameLength}&mode=${gameMode}`;
     var request = new XMLHttpRequest();
     request.open('POST', url);
     request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');

@@ -3,7 +3,8 @@
 
 Name-guessing game using BambooHR API.
 
-TODO:
+TODO: https://trello.com/b/kdW6gonu/bamboozled
+
 - question and answer client/server flow
 - don't crash!!
 - persistent session on server (in memory to start)
@@ -139,7 +140,7 @@ function serveParsedRequest(requestPath, urlparts, body, response)
             serveFile("index.html", response);
             break;
         case 'play':
-            createPlaySession(body.idtoken, response);
+            createPlaySession(body.idtoken, urlparts.query.length, urlparts.query.mode, response);
             break;
         case 'continue':
             continuePlaySession(urlparts.query.id, response);
@@ -155,7 +156,7 @@ function serveParsedRequest(requestPath, urlparts, body, response)
     }
 }
 
-function createPlaySession(idtoken, response)
+function createPlaySession(idtoken, gameLength, gameMode, response)
 {
     // validate google ID token and get user info
     validateIDToken(idtoken)
@@ -174,15 +175,23 @@ function createPlaySession(idtoken, response)
             // TODO: decide how to generate session ID's to avoid clients spoofing sessions - for now it's an increasing count, plus a random number
             var sessionid = (++sessionCount << 10) + Math.floor(Math.random() * 1024);
             console.log(`CREATING SESSION ${sessionid} for ${employee.fullName}`);
-            // TODO: decide on game modes, number of questions, etc.
+            var numberQuestions = 10;
+            switch (gameLength)
+            {
+                case "10": numberQuestions = 10; break;
+                case "20": numberQuestions = 20; break;
+                case "50": numberQuestions = 50; break;
+                case "everyone": numberQuestions = bamboo.directory.length; break;
+            }
             sessions[sessionid] =
             {
                 id: sessionid,
                 user: employee.id,
-                employeeIDs: bamboo.getRandomEmployeeIDs(10),
+                employeeIDs: bamboo.getRandomEmployeeIDs(numberQuestions),
                 index: 0,
                 right: 0,
-                wrong: 0
+                wrong: 0,
+                mode: gameMode
             };
             
             continuePlaySession(sessionid, response);
@@ -214,7 +223,7 @@ function continuePlaySession(sessionid, response)
     }
     else
     {
-        // TODO: tell user their score - or handle this on client
+        // TODO: end of game - handled here or on client?
     }
 }
 
@@ -251,7 +260,7 @@ function serveAnswerReply(query, response)
         return;
     
     var employee = bamboo.getEmployee(session.employeeIDs[session.index]);
-    var correct = employee.nameMatches(query.name);
+    var correct = employee.nameMatches(query.name, session.mode);
     
     logGuess(session.user, session.employeeIDs[session.index], query.name, correct);
     
@@ -269,7 +278,7 @@ function serveAnswerReply(query, response)
     {
         id: session.id,
         img: employee.photoUrl,
-        name: employee.fullName,
+        name: (session.mode == "beast" ? employee.fullName : employee.fullPreferredName),
         correct: correct,
         total: session.employeeIDs.length,
         right: session.right,
