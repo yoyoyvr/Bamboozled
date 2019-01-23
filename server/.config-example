@@ -1,4 +1,4 @@
-// Copy as ".config", then populate appropriately (and remove this line)
+// Copy as ".config.json", then populate appropriately (and remove this line)
 {
     "hostname": "127.0.0.1",
     "port": 3000,
@@ -7,5 +7,12 @@
     {
         "apikey": "ffffffffffffffffffffffffffffffffffffffff",
         "organization": "acme"
+    },
+    "mysql":
+    {
+        "host": "localhost",
+        "user": "bamboozled",
+        "password": "the password",
+        "database": "bamboozled"        
     }
 }

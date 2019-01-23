@@ -75,6 +75,7 @@ const url = require('url');
 const fs = require('fs');
 const path = require('path');
 const querystring = require('querystring');
+const mysql = require('mysql');
 
 // Note: need to "npm install google-auth-library"
 //     + google-auth-library@2.0.1
@@ -98,7 +99,26 @@ const guessLog = fs.createWriteStream("./logs/guesses.log", {flags:'a'});
 
 var sessionCount = 0;
 var sessions = {};
+var database = null;
 
+function connectToDatabase(config)
+{
+    var db = mysql.createConnection({
+      host: config.host,
+      user: config.user,
+      password: config.password,
+      database: config.database,
+      insecureAuth : true
+    });
+
+    db.connect(function(err)
+    {
+      if (err) throw err;
+      console.log(`connected to database ${config.host} as ${config.user}`);
+    });    
+    
+    return db;
+}
 
 function startServer(hostname, port)
 {
@@ -204,11 +224,13 @@ function createPlaySession(idtoken, gameLength, gameMode, response)
             {
                 id: sessionid,
                 user: employee.id,
+                username: employee.fullPreferredName,
                 employeeIDs: bamboo.getRandomEmployeeIDs(numberQuestions),
                 index: 0,
                 right: 0,
                 wrong: 0,
-                mode: gameMode
+                mode: gameMode,
+                length: (gameLength == "everyone" ? 0 : numberQuestions)
             };
             
             continuePlaySession(sessionid, response);
@@ -223,7 +245,7 @@ function continuePlaySession(sessionid, response)
     var session = getSession(sessionid, response);
     if (!session)
         return;
-    if (session.index < session.employeeIDs.length)
+    if (!isSessionOver(session))
     {
         var employee = bamboo.getEmployee(session.employeeIDs[session.index]);
         response.writeHead(200, {'Content-Type': 'application/json'});
@@ -241,8 +263,54 @@ function continuePlaySession(sessionid, response)
     }
     else
     {
-        // TODO: end of game - handled here or on client?
+        // TODO: do we ever get here?
     }
+}
+
+function isSessionOver(session)
+{
+    return (session.index >= session.employeeIDs.length);
+}
+
+function reportSessionScore(session)
+{
+    var employee_id = session.user;
+    var employee_name = session.username;
+    var timestamp = getTimestamp();
+    var score = session.right;
+    var game_mode = session.mode;
+    var game_length = session.length;
+
+    var sqlSelect = `SELECT * FROM scores WHERE employee_id = ${employee_id} AND game_mode = '${game_mode}' AND game_length = '${game_length}'`;
+    database.query(sqlSelect, function (err, result) {
+        if (err) throw err;
+        
+        var sqlUpdateOrInsert = null;
+        if (result.length > 0)
+        {
+            if (result[0].score < score)
+            {
+                sqlUpdateOrInsert = `UPDATE scores SET score = ${score}, timestamp = ${timestamp} WHERE employee_id = ${employee_id} AND game_mode = '${game_mode}' AND game_length = '${game_length}'`;                
+            }
+        }
+        else
+        {
+            sqlUpdateOrInsert = `INSERT INTO scores (employee_id, employee_name, timestamp, score, game_length, game_mode) VALUES ('${employee_id}', '${employee_name}', '${timestamp}', '${score}', '${game_length}', '${game_mode}')`;
+        }
+        
+        if (sqlUpdateOrInsert != null)
+        {
+            database.query(sqlUpdateOrInsert, function (err, result) {
+                if (err) throw err;
+                console.log(`reported score ('${employee_id}', '${employee_name}', '${timestamp}', '${score}', '${game_length}', '${game_mode}')`);
+            });
+        }
+    });
+}
+
+function getTimestamp()
+{
+    return Math.floor(Date.now() / 1000);
 }
 
 function getSession(sessionid, response)
@@ -291,6 +359,12 @@ function serveAnswerReply(query, response)
     {
         session.wrong++;
     }
+    
+    if (isSessionOver(session))
+    {
+        reportSessionScore(session);
+    }
+    
     response.writeHead(200, {'Content-Type': 'application/json'});
     var data =
     {
@@ -361,6 +435,7 @@ async function validateIDToken(idtoken)
 
 function main()
 {
+    database = connectToDatabase(config.mysql);
     startServer(config.hostname, config.port);
 }
 
