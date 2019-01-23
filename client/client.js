@@ -86,19 +86,33 @@ function onNewQuestion(responseText)
 {
     var question = JSON.parse(responseText);
     var scoreText = getScoreText(question);
-    document.getElementById("main").innerHTML =
-    `<img src="${question.img}" width=300 height=300><br>
-    <div id="questionDiv">
-        <div class="question">
+    var mainElement = document.getElementById("main");
+    
+    // Apparently clearing and explicitly adding elements is faster than setting innerHTML. I suppose I should do this everywhere.
+    while (mainElement.lastChild) {
+        mainElement.removeChild(mainElement.lastChild);
+    }
+
+    var imageElement = document.createElement('img');
+    imageElement.width = 300;
+    imageElement.height = 300;
+    imageElement.src = question.img;
+
+    var questionElement = document.createElement('div');
+    questionElement.id = 'questionDiv';
+    questionElement.innerHTML =
+        `<div class="question">
             <form id="answerForm">
                 Who's this? <input id="nameText" type="text" name="name" onkeydown="onEnterSubmitAnswer(event)" autofocus><br>
                 <input type="hidden" name="id" value="${question.id}">
             </form>
         </div>
         ${scoreText}
-        <br><br><input type="submit" class="button continueButton" onclick="onSubmitAnswer()" value="SUBMIT"></input>
-    </div>
-    `;
+        <br><br><input type="submit" class="button continueButton" onclick="onSubmitAnswer()" value="SUBMIT"></input>`;
+    
+    mainElement.appendChild(imageElement);
+    mainElement.appendChild(questionElement);
+    
     document.getElementById("nameText").focus();
 }
 
@@ -133,9 +147,8 @@ function onAnswerResponse(responseText)
         ? `<br><br><input id="nextButton" type="submit" class="button continueButton" onclick="continueSession(${response.id})" value="NEXT"></input>`
         : `<br><br><input id="againButton" type="button" class="button playButton" onclick="showPlayButton()" value="PLAY AGAIN"></input>`);
     
-    document.getElementById("main").innerHTML =
-        `<img src="${response.img}" width=300 height=300><br>`
-        + resultText
+    document.getElementById("questionDiv").innerHTML =
+        resultText
         + scoreText
         + continueText;
     document.getElementById("nextButton").focus();
@@ -157,12 +170,11 @@ function getScoreText(response)
 
 function onError(statusText)
 {
-    document.getElementById("main").innerHTML = statusText;
-}
-
-function endSession()
-{
-    document.getElementById("main").innerHTML = "DONE!<br>"+window.location;
+    // TODO: why does onError get called with non-errors?
+    if ((statusText != "") && (statusText != "OK"))
+    {
+        document.getElementById("main").innerHTML = statusText;
+    }
 }
 
 // TODO: put this in a module and make it a class that somewhat emulates the nodejs http.request mechanism
