@@ -230,7 +230,8 @@ function createPlaySession(idtoken, gameLength, gameMode, response)
                 right: 0,
                 wrong: 0,
                 mode: gameMode,
-                length: (gameLength == "everyone" ? 0 : numberQuestions)
+                length: (gameLength == "everyone" ? 0 : numberQuestions),
+                starttime: getTimestamp()
             };
             
             continuePlaySession(sessionid, response);
@@ -277,6 +278,7 @@ function reportSessionScore(session)
     var employee_id = session.user;
     var employee_name = session.username;
     var timestamp = getTimestamp();
+    var duration = timestamp - session.starttime;
     var score = session.right;
     var game_mode = session.mode;
     var game_length = session.length;
@@ -288,14 +290,14 @@ function reportSessionScore(session)
         var sqlUpdateOrInsert = null;
         if (result.length > 0)
         {
-            if (result[0].score < score)
+            if ((result[0].score < score) || ((result[0].score == score) && (result[0].duration > duration)))
             {
-                sqlUpdateOrInsert = `UPDATE scores SET score = ${score}, timestamp = ${timestamp} WHERE employee_id = ${employee_id} AND game_mode = '${game_mode}' AND game_length = '${game_length}'`;                
+                sqlUpdateOrInsert = `UPDATE scores SET score = ${score}, timestamp = ${timestamp}, duration = ${duration} WHERE employee_id = ${employee_id} AND game_mode = '${game_mode}' AND game_length = '${game_length}'`;                
             }
         }
         else
         {
-            sqlUpdateOrInsert = `INSERT INTO scores (employee_id, employee_name, timestamp, score, game_length, game_mode) VALUES ('${employee_id}', '${employee_name}', '${timestamp}', '${score}', '${game_length}', '${game_mode}')`;
+            sqlUpdateOrInsert = `INSERT INTO scores (employee_id, employee_name, timestamp, duration, score, game_length, game_mode) VALUES ('${employee_id}', '${employee_name}', '${timestamp}', '${duration}', '${score}', '${game_length}', '${game_mode}')`;
         }
         
         if (sqlUpdateOrInsert != null)
@@ -379,9 +381,14 @@ function serveAnswerReply(query, response)
     };
     response.write(JSON.stringify(data));
     response.end();
+    
+    if (isSessionOver(session))
+    {
+        delete sessions[session.id];
+    }
 }
 
-// TODO: create a log class to wrap this
+// TODO: move guess log to database
 function logGuess(guesserid, guessingid, guess, correct)
 {
     const unixtime = Math.floor((new Date()).getTime() / 1000);
