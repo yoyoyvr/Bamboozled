@@ -3,25 +3,7 @@
 
 Name-guessing game using BambooHR API.
 
-TODO: https://trello.com/b/kdW6gonu/bamboozled
-
-- question and answer client/server flow
-- don't crash!!
-- persistent session on server (in memory to start)
-- Google auth
-    - https://www.npmjs.com/package/google-auth-library
-    - create app at Google Developer console - https://console.developers.google.com
-    - created bamboozled-604 under blackbirdinteractive organization, using my BBI google account
-    - or can it all be client side? https://developers.google.com/identity/sign-in/web/sign-in
-    - Blackbird only, and so we know which employee is playing
-- improved UI on client (React?)
-- bamboozled name & logo title screen
-- improved name matching - bonus points for getting first and last?
-- redis data store for employee directory (cache previous server run, in case of Bamboo API error)
-- user bio feature (stored in redis)
-- relationship strength table (MySQL; record correct guesses, number of attempts, etc.)
-- incorrect guesses table
-- extract google auth (client and server) into helper scripts
+https://trello.com/b/kdW6gonu/bamboozled
 */
 
 /*
@@ -67,6 +49,12 @@ https://www.twilio.com/blog/2017/08/http-requests-in-node-js.html
   https://medium.com/@jackrobertscott/how-to-use-google-auth-api-with-node-js-888304f7e3a0
   https://cloud.google.com/nodejs/getting-started/authenticate-users
   https://www.npmjs.com/package/passport-google-oauth2
+  
+  - https://www.npmjs.com/package/google-auth-library
+  - create app at Google Developer console - https://console.developers.google.com
+  - created bamboozled-604 under blackbirdinteractive organization, using my BBI google account
+  - or can it all be client side? https://developers.google.com/identity/sign-in/web/sign-in
+  - Blackbird only, and so we know which employee is playing
 */
 
 const http = require('http');
@@ -113,8 +101,12 @@ function connectToDatabase(config)
 
     db.connect(function(err)
     {
-      if (err) throw err;
-      console.log(`connected to database ${config.host} as ${config.user}`);
+        if (err)
+        {
+            logError(err);
+            return;
+        }
+        console.log(`connected to database ${config.host} as ${config.user}`);
     });    
     
     return db;
@@ -151,7 +143,6 @@ function serveRequest(request, response)
     var urlparts = url.parse(request.url, true);
     var requestPath = urlparts.pathname.substring(1);   // omit leading slash
 
-    console.log(`${request.method}: ${requestPath}`);
     if (request.method === 'POST')
     {
         let body = '';
@@ -210,28 +201,73 @@ function createPlaySession(idtoken, gameLength, gameMode, response)
         if (userinfo)
         {
             var employee = bamboo.findEmployeeByEmail(userinfo.email);
-            
-            // TODO: decide how to generate session ID's to avoid clients spoofing sessions - for now it's an increasing count, plus a random number
-            var sessionid = (++sessionCount << 10) + Math.floor(Math.random() * 1024);
-            console.log(`CREATING SESSION ${sessionid} for ${employee.fullName}`);
-            var numberQuestions = (gameLength == "everyone" ? bamboo.directory.length : parseInt(gameLength));
-            sessions[sessionid] =
+            var session = findSession(employee, gameLength, gameMode);
+            if (!session)
             {
-                id: sessionid,
-                user: employee.id,
-                username: employee.fullPreferredName,
-                employeeIDs: bamboo.getRandomEmployeeIDs(numberQuestions),
-                index: 0,
-                right: 0,
-                wrong: 0,
-                mode: gameMode,
-                length: (gameLength == "everyone" ? 0 : numberQuestions),
-                starttime: getTimestamp()
-            };
+                session = createSession(employee, gameLength, gameMode);
+            }
             
-            continuePlaySession(sessionid, response);
+            continuePlaySession(session.id, response);
         }
     });
+}
+
+function getSession(sessionid, response)
+{
+    var session = sessions[sessionid];
+    if (!session)
+    {
+        console.log(`SESSION NOT FOUND: ${sessionid}`);
+        
+        // TODO: error handling on client if session no longer exists
+        response.writeHead(404, {'Content-Type': 'application/json'});
+        response.write('{"error": "session not found"}');
+        response.end();
+    }
+    
+    return session;
+}
+
+function findSession(employee, gameLength, gameMode)
+{
+    // TODO: finish implementation of resuming existing sessions (see https://trello.com/c/FGI2XZ1I/17-tidy-up-session-management)
+    return null;
+    
+    for (var key in sessions)
+    {
+        var session = sessions[key];
+        if (session.user == employee.id)
+        {
+            return session;
+        }
+    }
+    
+    return null;
+}
+
+function createSession(employee, gameLength, gameMode)
+{
+    // TODO: decide how to generate session ID's to avoid clients spoofing sessions - for now it's an increasing count, plus a random number
+    var sessionid = (++sessionCount << 10) + Math.floor(Math.random() * 1024);
+    console.log(`creating session ${sessionid} for ${employee.fullName}`);
+    var numberQuestions = (gameLength == "everyone" ? bamboo.directory.length : parseInt(gameLength));
+    var session =
+    {
+        id: sessionid,
+        user: employee.id,
+        username: employee.fullPreferredName,
+        employeeIDs: bamboo.getRandomEmployeeIDs(numberQuestions),
+        index: 0,
+        right: 0,
+        wrong: 0,
+        mode: gameMode,
+        length: (gameLength == "everyone" ? 0 : numberQuestions),
+        starttime: getTimestamp()
+    };
+    
+    sessions[sessionid] = session;
+    
+    return session;
 }
 
 function continuePlaySession(sessionid, response)
@@ -278,7 +314,11 @@ function reportSessionScore(session)
 
     var sqlSelect = `SELECT * FROM scores WHERE employee_id = ${employee_id} AND game_mode = '${game_mode}' AND game_length = '${game_length}'`;
     database.query(sqlSelect, function (err, result) {
-        if (err) throw err;
+        if (err)
+        {
+            logError(err);
+            return;
+        }
         
         var sqlUpdateOrInsert = null;
         if (result.length > 0)
@@ -296,8 +336,11 @@ function reportSessionScore(session)
         if (sqlUpdateOrInsert != null)
         {
             database.query(sqlUpdateOrInsert, function (err, result) {
-                if (err) throw err;
-                console.log(`reported score ('${employee_id}', '${employee_name}', '${timestamp}', '${score}', '${game_length}', '${game_mode}')`);
+                if (err)
+                {
+                    logError(err);
+                    return;
+                }
             });
         }
     });
@@ -308,7 +351,11 @@ function getLeaderboard(gameLength, gameMode, callback)
     var game_length = (gameLength == "everyone" ? 0 : parseInt(gameLength));
     var game_mode = gameMode;
     database.query(`SELECT * FROM scores WHERE game_length=${game_length} AND game_mode='${game_mode}' ORDER BY score DESC, duration ASC`, function (err, result) {
-        if (err) throw err;
+        if (err)
+        {
+            logError(err);
+            return;
+        }
         callback(result);
     });
 }
@@ -339,22 +386,6 @@ function serveLeaderboard(idtoken, gameLength, gameMode, response)
 function getTimestamp()
 {
     return Math.floor(Date.now() / 1000);
-}
-
-function getSession(sessionid, response)
-{
-    var session = sessions[sessionid];
-    if (!session)
-    {
-        console.log(`SESSION NOT FOUND: ${sessionid}`);
-        
-        // TODO: error handling on client if session no longer exists
-        response.writeHead(404, {'Content-Type': 'application/json'});
-        response.write('{"error": "session not found"}');
-        response.end();
-    }
-    
-    return session;
 }
 
 // TODO: bring back random functionality (just needs client I think)
@@ -415,18 +446,31 @@ function serveAnswerReply(query, response)
     }
 }
 
-// TODO: move guess log to database
 function logGuess(guesserid, guessingid, guess, correct)
 {
-    const unixtime = getTimestamp();
-    guessLog.write(`${unixtime},${guesserid},${guessingid},"${guess}",${correct}\n`);
+    const timestamp = getTimestamp();
+    
+    // Avoid any sort of SQL injection, and truncate to length of column.
+    guess = purifyString(guess).substring(0,45);
+    
+    var sql = `INSERT INTO guesses (timestamp, employee_id, guessing_id, guess, correct) VALUES ('${timestamp}', '${guesserid}', '${guessingid}', '${guess}', ${correct ? 1 : 0})`;
+    database.query(sql, function (err, result) {
+        if (err)
+        {
+            logError(err);
+            return;
+        }
+    });
+}
+
+function purifyString(s)
+{
+    return s.replace(/[^a-zA-Z0-9 ]/g, '');
 }
 
 
 function serveFile(requestPath, response)
 {
-    console.log("serving " + requestPath);
-        
     const clientRoot = path.join(path.dirname(__dirname), "client");
     
     if (requestPath == "")
@@ -438,7 +482,6 @@ function serveFile(requestPath, response)
     {
         response.statusCode = 200;
         fs.createReadStream(clientPath).pipe(response)
-        console.log("served " + clientPath);
     }
     else
     {
@@ -465,6 +508,11 @@ async function validateIDToken(idtoken)
     }
 
     return payload;
+}
+
+function logError(err)
+{
+    console.log(err);
 }
 
 function main()

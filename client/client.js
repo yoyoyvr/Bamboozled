@@ -269,7 +269,7 @@ function formatGameLength(length)
     {
         case "everyone":
         case 0:
-            return "Everyone";
+            return "The Long Game";
         
         default:
             return "Game Length " + length;
