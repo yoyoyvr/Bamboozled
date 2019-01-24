@@ -1,19 +1,21 @@
 :root
 {
     /* Named colors, from Blackbird style guide - adjust palette here if needed. */
-    --color-bbi-black: #000000;
     --color-bbi-decal-grey: #231f20;
-    --color-bbi-blackbird-grey: #616161;
+    --color-blackbird-grey: #616161;
     --color-bbi-asteroid-grey: #717075;
     --color-bbi-ion-blue: #aacce0;
     --color-bbi-long-march-orange: #ee7922;
-    --color-bbi-baserunner-yellow: #ffde00;
-    --color-bbi-light-grey: #cccccc;
-    --color-bbi-white: #ffffff;
+    --color-bbi-baserunner-yellow: #f7c339;
     
     --color-green: #69d04a;
     --color-darkgreen: #29901a;
     --color-red: #db4640;
+
+    --color-black: #000000;
+    --color-dark-grey: #444444;
+    --color-light-grey: #cccccc;
+    --color-white: #ffffff;
     
     --color-text: #ffffff;
 }
@@ -84,7 +86,7 @@ a
     display: inline-block;
     margin: 4px 2px;
     cursor: pointer;
-    box-shadow: 3px 5px var(--color-bbi-blackbird-grey);
+    box-shadow: 3px 5px var(--color-blackbird-grey);
 }
 
 .playButton
@@ -104,14 +106,14 @@ a
 .playButton:active
 {
     background-color: var(--color-darkgreen);
-    box-shadow: 1px 2px var(--color-bbi-blackbird-grey);
+    box-shadow: 1px 2px var(--color-blackbird-grey);
     transform: translate(2px,3px);
 }
 
 .continueButton
 {
     background-color: var(--color-bbi-asteroid-grey);
-    border-color: var(--color-bbi-blackbird-grey);
+    border-color: var(--color-blackbird-grey);
     padding: 10px 10px;
     width: 160px;
     font-size: 16px;
@@ -119,13 +121,13 @@ a
 
 .continueButton:hover
 {
-    background-color: var(--color-bbi-blackbird-grey);
+    background-color: var(--color-blackbird-grey);
 }
 
 .continueButton:active
 {
-    background-color: var(--color-bbi-blackbird-grey);
-    box-shadow: 1px 2px var(--color-bbi-blackbird-grey);
+    background-color: var(--color-blackbird-grey);
+    box-shadow: 1px 2px var(--color-blackbird-grey);
     transform: translate(2px,3px);
 }
 
@@ -153,7 +155,7 @@ a
 
 #gameModeForm label
 {
-    color: var(--color-bbi-light-grey);
+    color: var(--color-light-grey);
 }
 
 .question
@@ -162,7 +164,7 @@ a
     width: 100%;
     height: 60px;
     line-height: 60px;
-    background-color: var(--color-bbi-blackbird-grey);
+    background-color: var(--color-blackbird-grey);
     font-size: 24px;
     text-align: center;
     vertical-align: middle;    
@@ -174,7 +176,7 @@ a
     width: 100%;
     height: 40px;
     line-height: 40px;
-    background-color: var(--color-bbi-blackbird-grey);
+    background-color: var(--color-blackbird-grey);
     font-size: 16px;
     font-weight: bold;
     text-align: center;
@@ -219,6 +221,57 @@ a
     vertical-align: middle;
 }
 
+.leaderboardTitle
+{
+    margin: auto;
+    height: 40px;
+    line-height: 40px;
+    color: var(--color-blackbird-grey);
+    background-color: var(--color-bbi-ion-blue);
+    font-size: 28px;
+    text-align: center;
+    vertical-align: middle;    
+}
+
+.leaderboard
+{
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.leaderboard th
+{
+    background-color: var(--color-green);
+}
+
+.leaderboard th, .leaderboard td
+{
+    border: 1px solid var(--color-bbi-ion-blue);
+    margin: auto;
+    padding: 2px 12px;
+    height: 24px;
+    line-height: 24px;
+    font-size: 20px;
+    color: var(--color-dark-grey);
+    text-align: center;
+    vertical-align: middle;    
+}
+
+.leaderboard tr.even
+{
+    background-color: var(--color-light-grey);
+}
+
+.leaderboard tr.odd
+{
+    background-color: var(--color-white);
+}
+
+.leaderboard tr.self
+{
+    background-color: var(--color-bbi-baserunner-yellow);
+}
+
 /* from http://www.tipue.com/blog/radio-checkbox */
 .form-radio
 {
@@ -227,7 +280,7 @@ a
     appearance: none;
     display: inline-block;
     position: relative;
-    background-color: var(--color-bbi-light-grey);
+    background-color: var(--color-light-grey);
     color: #666;
     top: 3px;
     height: 20px;

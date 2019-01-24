@@ -6,10 +6,10 @@ var googleIDToken;
 
 function onLoad()
 {
-    //showPlayButton();
+    //showMainMenu();
 }
 
-function showPlayButton()
+function showMainMenu()
 {
     var name = googleProfile.getName();
     document.getElementById("main").innerHTML =
@@ -26,6 +26,7 @@ function showPlayButton()
             <input type="radio" class="form-radio" name="gameMode" value="beast"> Beast Mode<br>
         </form>
         <button id="startButton" class="button playButton" onclick="startSession()">PLAY</button>
+        <button class="button continueButton" onclick="showLeaderboard()">LEADERBOARD</button>
         `;
     document.getElementById("startButton").focus();
 }
@@ -35,7 +36,7 @@ function onSignIn(googleUser)
     googleProfile = googleUser.getBasicProfile();
     googleIDToken = googleUser.getAuthResponse().id_token;
 
-    showPlayButton();
+    showMainMenu();
 
     //console.log('ID: ' + googleProfile.getId()); // Do not send to your backend! Use an ID token instead. (see below)
     //console.log('Name: ' + googleProfile.getName());
@@ -56,14 +57,91 @@ function signOut()
     });
 }
 
+function showLeaderboard(gameLength, gameMode)
+{
+    if (!gameLength)
+    {
+        gameLength = document.querySelector('input[name="gameLength"]:checked').value;
+    }
+    if (!gameMode)
+    {
+        gameMode = document.querySelector('input[name="gameMode"]:checked').value;
+    }
+
+    var url = buildUrl('leaderboard', {length: gameLength, mode: gameMode});
+    var request = new XMLHttpRequest();
+    request.open('POST', url);
+    request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    request.onreadystatechange = function() { 
+        if (request.readyState == 4 && request.status == 200)
+            onLeaderboard(request.responseText, gameLength, gameMode);
+        else
+            onError(request.statusText)
+    }
+    request.send('idtoken=' + googleIDToken);
+}
+
+function onLeaderboard(responseText, gameLength, gameMode)
+{
+    var data = JSON.parse(responseText);
+    var mainElement = document.getElementById("main");
+
+    var title = document.createElement('div');
+    title.className = "leaderboardTitle";
+    title.innerHTML = `${formatGameLength(gameLength)}${formatGameMode(gameMode)}`;
+    
+    var table = document.createElement('table');
+    table.className = "leaderboard";
+    
+    var header = document.createElement('tr');
+    for (var text of ["Rank", "Name", "Score", "Time", "Date"])
+    {
+        var cell = document.createElement('th');
+        cell.textContent = text;
+        header.appendChild(cell);
+    }
+    table.appendChild(header);
+    
+    var rank = 0;
+    for (var result of data.leaderboard)
+    {
+        rank++;
+        var position = rank.toString();
+        var name = result.employee_name;
+        var score = result.score;
+        var duration = formatDuration(result.duration);
+        var date = formatTimestamp(result.timestamp);
+        
+        var row = document.createElement('tr');
+        row.className = (rank%2 == 1 ? "odd" : "even") + (result.employee_id == data.id ? " self" : "");
+        for (var text of [position, name, score, duration, date])
+        {
+            var cell = document.createElement('td');
+            cell.textContent = text;
+            row.appendChild(cell);
+        }
+        table.appendChild(row);
+    }
+    
+    var button = document.createElement('div');
+    button.innerHTML = `<br><br><input type="submit" class="button continueButton" onclick="showMainMenu()" value="CONTINUE"></input>`;
+    
+    while (mainElement.lastChild)
+    {
+        mainElement.removeChild(mainElement.lastChild);
+    }
+    mainElement.appendChild(title);
+    mainElement.appendChild(table);
+    mainElement.appendChild(button);
+}
+
 function startSession()
 {
     var gameLength = document.querySelector('input[name="gameLength"]:checked').value;
     var gameMode = document.querySelector('input[name="gameMode"]:checked').value;
 
     // Send our ID token to the server along with the request to start a game.
-    // TODO: should this be https?
-    var url = window.location + `play?length=${gameLength}&mode=${gameMode}`;
+    var url = buildUrl('play', {length: gameLength, mode: gameMode});
     var request = new XMLHttpRequest();
     request.open('POST', url);
     request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
@@ -78,7 +156,7 @@ function startSession()
 
 function continueSession(id)
 {
-    var url = window.location + `continue?id=${id}`;
+    var url = buildUrl('continue', {id: id});
     httpGet(url, onNewQuestion, onError);
 }
 
@@ -88,11 +166,6 @@ function onNewQuestion(responseText)
     var scoreText = getScoreText(question);
     var mainElement = document.getElementById("main");
     
-    // Apparently clearing and explicitly adding elements is faster than setting innerHTML. I suppose I should do this everywhere.
-    while (mainElement.lastChild) {
-        mainElement.removeChild(mainElement.lastChild);
-    }
-
     var imageElement = document.createElement('img');
     imageElement.width = 300;
     imageElement.height = 300;
@@ -110,6 +183,11 @@ function onNewQuestion(responseText)
         ${scoreText}
         <br><br><input type="submit" class="button continueButton" onclick="onSubmitAnswer()" value="SUBMIT"></input>`;
     
+    // Apparently clearing and explicitly adding elements is faster than setting innerHTML. I suppose I should do this everywhere.
+    while (mainElement.lastChild)
+    {
+        mainElement.removeChild(mainElement.lastChild);
+    }
     mainElement.appendChild(imageElement);
     mainElement.appendChild(questionElement);
     
@@ -131,7 +209,7 @@ function onSubmitAnswer()
     var id = form.get('id');
     var name = form.get('name');
     
-    var url = window.location + `answer?id=${id}&name=${name}`;
+    var url = buildUrl('answer', {id: id, name: name});
     httpGet(url, onAnswerResponse, onError);
 }
 
@@ -146,7 +224,10 @@ function onAnswerResponse(responseText)
     var moreToCome = (response.right + response.wrong < response.total);
     var continueText = (moreToCome
         ? `<br><br><input id="nextButton" type="submit" class="button continueButton" onclick="continueSession(${response.id})" value="NEXT"></input>`
-        : `<br><br><input id="againButton" type="button" class="button playButton" onclick="showPlayButton()" value="PLAY AGAIN"></input>`);
+        : `<br><br>
+           <input id="againButton" type="button" class="button playButton" onclick="showMainMenu()" value="PLAY AGAIN"></input>
+           <button class="button continueButton" onclick="showLeaderboard('`+response.length+`','`+response.mode+`')">LEADERBOARD</button>
+          `);
     
     document.getElementById("questionDiv").innerHTML =
         resultText
@@ -168,18 +249,53 @@ function getScoreText(response)
     var sofar = right + wrong;
     var remaining = total - sofar;
     
-    var beastMode = (response.mode == "beast" ? `   <span class="beastMode">Beast Mode</span>` : "");
+    var gameMode = formatGameMode(response.mode);
     var scoreText = null;
     if (remaining > 0)
     {
-        scoreText = `<div class="score">${right}/${sofar} correct, ${remaining} to go${beastMode}</div>`;
+        scoreText = `<div class="score">${right}/${sofar} correct, ${remaining} to go${gameMode}</div>`;
     }
     else
     {
-        scoreText = `<div class="score finalScore">You got ${right}/${sofar} correct!${beastMode}</div>`;
+        scoreText = `<div class="score finalScore">You got ${right}/${sofar} correct!${gameMode}</div>`;
     }
     
     return scoreText;
+}
+
+function formatGameLength(length)
+{
+    switch (length)
+    {
+        case "everyone":
+        case 0:
+            return "Everyone";
+        
+        default:
+            return "Game Length " + length;
+    }
+}
+
+function formatGameMode(mode)
+{
+    return (mode == "beast" ? '   <span class="beastMode">Beast Mode</span>' : '');
+}
+
+function formatDuration(seconds)
+{
+    var h = Math.floor(seconds / 3600);
+    seconds %= 3600;
+    var m = Math.floor(seconds / 60);
+    var s = seconds % 60;
+    
+    return `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+}
+
+function formatTimestamp(timestamp)
+{
+    var date = new Date(timestamp * 1000);
+    var options = { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' };
+    return date.toLocaleDateString('en', options);
 }
 
 function onError(statusText)
@@ -189,6 +305,36 @@ function onError(statusText)
     {
         document.getElementById("main").innerHTML = statusText;
     }
+}
+
+function buildUrl(path, params)
+{
+    var url = window.location.href;
+    
+    // Strip trailing hash mark if present, and ensure ends with slash.
+    if (url.endsWith('#'))
+    {
+        url = url.slice(0, -1);
+    }
+    if (!url.endsWith('/'))
+    {
+        url += '/';
+    }
+
+    // Add path and parameters.
+    url = url + path;
+    if (params)
+    {
+        var first = true;
+        for (var key in params)
+        {
+            url += (first ? '?' : '&');
+            first = false;
+            url += `${key}=${params[key]}`;
+        }
+    }
+    
+    return url;
 }
 
 // TODO: put this in a module and make it a class that somewhat emulates the nodejs http.request mechanism

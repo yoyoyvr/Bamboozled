@@ -188,6 +188,9 @@ function serveParsedRequest(requestPath, urlparts, body, response)
         case 'answer':
             serveAnswerReply(urlparts.query, response);
             break;
+        case 'leaderboard':
+            serveLeaderboard(body.idtoken, urlparts.query.length, urlparts.query.mode, response);
+            break;
         default:
             serveFile(requestPath, response);
     }
@@ -203,7 +206,6 @@ function createPlaySession(idtoken, gameLength, gameMode, response)
     })
     .then(userinfo =>
     {
-        console.log("USERINFO: " + JSON.stringify(userinfo));
         // if there was an exception we still get here, so need to handle undefined user info
         if (userinfo)
         {
@@ -212,14 +214,7 @@ function createPlaySession(idtoken, gameLength, gameMode, response)
             // TODO: decide how to generate session ID's to avoid clients spoofing sessions - for now it's an increasing count, plus a random number
             var sessionid = (++sessionCount << 10) + Math.floor(Math.random() * 1024);
             console.log(`CREATING SESSION ${sessionid} for ${employee.fullName}`);
-            var numberQuestions = 10;
-            switch (gameLength)
-            {
-                case "10": numberQuestions = 10; break;
-                case "20": numberQuestions = 20; break;
-                case "50": numberQuestions = 50; break;
-                case "everyone": numberQuestions = bamboo.directory.length; break;
-            }
+            var numberQuestions = (gameLength == "everyone" ? bamboo.directory.length : parseInt(gameLength));
             sessions[sessionid] =
             {
                 id: sessionid,
@@ -241,8 +236,6 @@ function createPlaySession(idtoken, gameLength, gameMode, response)
 
 function continuePlaySession(sessionid, response)
 {
-    console.log(`CONTINUING SESSION ${sessionid}`);
-
     var session = getSession(sessionid, response);
     if (!session)
         return;
@@ -305,6 +298,39 @@ function reportSessionScore(session)
             database.query(sqlUpdateOrInsert, function (err, result) {
                 if (err) throw err;
                 console.log(`reported score ('${employee_id}', '${employee_name}', '${timestamp}', '${score}', '${game_length}', '${game_mode}')`);
+            });
+        }
+    });
+}
+
+function getLeaderboard(gameLength, gameMode, callback)
+{
+    var game_length = (gameLength == "everyone" ? 0 : parseInt(gameLength));
+    var game_mode = gameMode;
+    database.query(`SELECT * FROM scores WHERE game_length=${game_length} AND game_mode='${game_mode}' ORDER BY score DESC, duration ASC`, function (err, result) {
+        if (err) throw err;
+        callback(result);
+    });
+}
+
+function serveLeaderboard(idtoken, gameLength, gameMode, response)
+{
+    // validate google ID token and get user info (so we can highlight current user in returned results)
+    validateIDToken(idtoken)
+    .catch(e =>
+    {
+        console.log(e);
+    })
+    .then(userinfo =>
+    {
+        // if there was an exception we still get here, so need to handle undefined user info
+        if (userinfo)
+        {
+            var employee = bamboo.findEmployeeByEmail(userinfo.email);
+            
+            var data = getLeaderboard(gameLength, gameMode, function(data) {
+                response.write(JSON.stringify({id: employee.id, leaderboard: data}));
+                response.end();
             });
         }
     });
@@ -377,7 +403,8 @@ function serveAnswerReply(query, response)
         total: session.employeeIDs.length,
         right: session.right,
         wrong: session.wrong,
-        mode: session.mode
+        mode: session.mode,
+        length: session.length
     };
     response.write(JSON.stringify(data));
     response.end();
@@ -391,7 +418,7 @@ function serveAnswerReply(query, response)
 // TODO: move guess log to database
 function logGuess(guesserid, guessingid, guess, correct)
 {
-    const unixtime = Math.floor((new Date()).getTime() / 1000);
+    const unixtime = getTimestamp();
     guessLog.write(`${unixtime},${guesserid},${guessingid},"${guess}",${correct}\n`);
 }
 
