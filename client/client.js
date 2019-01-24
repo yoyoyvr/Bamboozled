@@ -17,13 +17,13 @@ function showPlayButton()
         <div class="salutation">Hi ${name}!!</div>
         <form id="gameModeForm">
             <label>Game Length</label>
-            <input type="radio" name="gameLength" value="10" checked> 10
-            <input type="radio" name="gameLength" value="20"> 20
-            <input type="radio" name="gameLength" value="50"> 50
-            <input type="radio" name="gameLength" value="everyone"> Everyone<br><br>
+            <input type="radio" class="form-radio" name="gameLength" value="10" checked> 10
+            <input type="radio" class="form-radio" name="gameLength" value="20"> 20
+            <input type="radio" class="form-radio" name="gameLength" value="50"> 50
+            <input type="radio" class="form-radio" name="gameLength" value="everyone"> Everyone<br><br>
             <label>Difficulty</label>
-            <input type="radio" name="gameMode" value="normal" checked> Normal
-            <input type="radio" name="gameMode" value="beast"> Beast Mode<br>
+            <input type="radio" class="form-radio" name="gameMode" value="normal" checked> Normal
+            <input type="radio" class="form-radio" name="gameMode" value="beast"> Beast Mode<br>
         </form>
         <button id="startButton" class="button playButton" onclick="startSession()">PLAY</button>
         `;
@@ -143,7 +143,8 @@ function onAnswerResponse(responseText)
         ? `<div class="correct">Yes, it's ${response.name}!!</div>`
         : `<div class="incorrect">No, it's ${response.name}!!</div>`);
     var scoreText = getScoreText(response);
-    var continueText = (response.right + response.wrong < response.total
+    var moreToCome = (response.right + response.wrong < response.total);
+    var continueText = (moreToCome
         ? `<br><br><input id="nextButton" type="submit" class="button continueButton" onclick="continueSession(${response.id})" value="NEXT"></input>`
         : `<br><br><input id="againButton" type="button" class="button playButton" onclick="showPlayButton()" value="PLAY AGAIN"></input>`);
     
@@ -151,7 +152,12 @@ function onAnswerResponse(responseText)
         resultText
         + scoreText
         + continueText;
-    document.getElementById("nextButton").focus();
+    
+    // Don't put focus on the "againButton" because it's too easy to start a new game without realizing it.
+    if (moreToCome)
+    {
+        document.getElementById("nextButton").focus();
+    }
 }
 
 function getScoreText(response)
@@ -163,7 +169,15 @@ function getScoreText(response)
     var remaining = total - sofar;
     
     var beastMode = (response.mode == "beast" ? `   <span class="beastMode">Beast Mode</span>` : "");
-    var scoreText = `<div class="score">${right}/${sofar} correct, ${remaining} to go${beastMode}</div>`;
+    var scoreText = null;
+    if (remaining > 0)
+    {
+        scoreText = `<div class="score">${right}/${sofar} correct, ${remaining} to go${beastMode}</div>`;
+    }
+    else
+    {
+        scoreText = `<div class="score finalScore">You got ${right}/${sofar} correct!${beastMode}</div>`;
+    }
     
     return scoreText;
 }
