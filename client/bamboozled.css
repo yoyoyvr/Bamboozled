@@ -65,6 +65,7 @@ a
     padding-bottom:60px;   /* Height of the footer */
 }
 
+/* TODO: why is the footer longer than the title? it's forcing a horizontal scrollbar ... */
 #footer
 {
     color: var(--color-text);
