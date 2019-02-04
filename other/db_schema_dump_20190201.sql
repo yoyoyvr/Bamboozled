@@ -30,7 +30,7 @@ CREATE TABLE `guesses` (
   `guess` varchar(45) NOT NULL,
   `correct` bit(1) NOT NULL,
   PRIMARY KEY (`idguesses`)
-) ENGINE=InnoDB AUTO_INCREMENT=60 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=60 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -49,7 +49,7 @@ CREATE TABLE `scores` (
   `game_length` int(10) unsigned NOT NULL,
   `game_mode` char(16) NOT NULL,
   PRIMARY KEY (`employee_id`,`game_length`,`game_mode`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
