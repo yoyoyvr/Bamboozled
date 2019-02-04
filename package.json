@@ -1,0 +1,24 @@
+{
+  "name": "bamboozled",
+  "version": "1.0.0",
+  "description": "Name guessing game.",
+  "main": "server/bamboozled.js",
+  "dependencies": {
+    "google-auth-library": "^2.0.1",
+    "mysql": "^2.16.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yoyoyvr/Bamboozled.git"
+  },
+  "author": "Yossarian King",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/yoyoyvr/Bamboozled/issues"
+  },
+  "homepage": "https://github.com/yoyoyvr/Bamboozled#readme"
+}
