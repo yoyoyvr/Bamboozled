@@ -59,18 +59,17 @@ a
     padding: 0;
 }
 
+/* TODO: how to prevent main area from overflowing bottom of page? Would like scrolling within the screen, with Continue button below, e.g. on leaderboard. */
 #main
 {
     text-align: center;
     padding-bottom:60px;   /* Height of the footer */
 }
 
-/* TODO: why is the footer longer than the title? it's forcing a horizontal scrollbar ... */
 #footer
 {
     color: var(--color-text);
     background-color: var(--color-bbi-decal-grey);
-    padding: 20px;
     position:absolute;
     bottom:0;
     width:100%;
