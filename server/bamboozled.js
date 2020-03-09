@@ -154,6 +154,8 @@ function tryServeRequest(request, response)
 
 function serveRequest(request, response)
 {
+    console.log(`requested ${request.url}`);
+        
     var urlparts = url.parse(request.url, true);
     var requestPath = urlparts.pathname.substring(1);   // omit leading slash
 
