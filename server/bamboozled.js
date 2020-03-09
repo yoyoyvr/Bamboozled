@@ -122,6 +122,20 @@ function startServer(hostname, port)
         });
 }
 
+function startSecureServer(hostname, port)
+{
+    const options = {
+        key: fs.readFileSync('key.pem'),
+        cert: fs.readFileSync('cert.pem')
+    };
+    https.createServer(options, tryServeRequest)
+        .listen(port, //hostname,
+        function()
+        {
+            console.log(`server running at https://${hostname}:${port}/`);
+        });
+}
+
 function tryServeRequest(request, response)
 {
     try
@@ -518,7 +532,7 @@ function logError(err)
 function main()
 {
     database = connectToDatabase(config.mysql);
-    startServer(config.hostname, config.port);
+    startSecureServer(config.hostname, config.port);
 }
 
 main();
