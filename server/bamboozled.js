@@ -293,6 +293,7 @@ function continuePlaySession(sessionid, response)
         return;
     if (!isSessionOver(session))
     {
+        console.log(`continuing play session`);
         var employee = bamboo.getEmployee(session.employeeIDs[session.index]);
         response.writeHead(200, {'Content-Type': 'application/json'});
         var data =
@@ -310,6 +311,7 @@ function continuePlaySession(sessionid, response)
     else
     {
         // TODO: do we ever get here?
+        logError(`error: failed to continue play session`);
     }
 }
 
