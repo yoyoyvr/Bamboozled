@@ -536,7 +536,7 @@ function logError(err)
 function main()
 {
     database = connectToDatabase(config.mysql);
-    startSecureServer(config.hostname, config.port);
+    startServer(config.hostname, config.port);
 }
 
 main();
