@@ -127,6 +127,7 @@ function startSecureServer(hostname, port)
     const options = {
         key: fs.readFileSync('bbi.com-key.pem'),
         cert: fs.readFileSync('bbi.com-cert.pem'),
+//        ca: fs.readFileSync('bbi.com-inter.pem')
     };
     https.createServer(options, tryServeRequest)
         .listen(port, //hostname,
@@ -154,8 +155,6 @@ function tryServeRequest(request, response)
 
 function serveRequest(request, response)
 {
-    console.log(`requested ${request.url}`);
-        
     var urlparts = url.parse(request.url, true);
     var requestPath = urlparts.pathname.substring(1);   // omit leading slash
 
@@ -293,7 +292,6 @@ function continuePlaySession(sessionid, response)
         return;
     if (!isSessionOver(session))
     {
-        console.log(`continuing play session`);
         var employee = bamboo.getEmployee(session.employeeIDs[session.index]);
         response.writeHead(200, {'Content-Type': 'application/json'});
         var data =
