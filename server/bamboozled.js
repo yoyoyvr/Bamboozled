@@ -326,6 +326,7 @@ function reportSessionScore(session)
     if (config.banned && config.banned.includes(employee_id))
     {
         logError(`ignoring score from banned player ${employee_name}`)
+        return;
     }
     
     var timestamp = getTimestamp();
