@@ -126,7 +126,7 @@ function startSecureServer(hostname, port)
 {
     const options = {
         key: fs.readFileSync('key.pem'),
-        cert: fs.readFileSync('cert.pem')
+        cert: fs.readFileSync('intermediate.pem')
     };
     https.createServer(options, tryServeRequest)
         .listen(port, //hostname,
