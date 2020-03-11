@@ -219,8 +219,9 @@ function tryRedirectRequest(request, response)
     try
     {
         var redirect = "https://" + request.headers.host + request.url;
-        response.redirect(redirect);
         logDebug(`redirecting http request to ${redirect}`);
+        response.writeHead(301, { Location: redirect });
+        response.end();
     }
     catch (error)
     {
