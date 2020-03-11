@@ -112,7 +112,7 @@ function connectToDatabase(config)
     return db;
 }
 
-function startServer(hostname, port)
+function startHttpServer(hostname, port = 80)
 {
     http.createServer(tryServeRequest)
         .listen(port, //hostname,
@@ -122,7 +122,7 @@ function startServer(hostname, port)
         });
 }
 
-function startSecureServer(hostname, port)
+function startHttpsServer(hostname, port = 443)
 {
     const options = {
         key: fs.readFileSync('./bbi.com-key.pem'),
@@ -158,15 +158,7 @@ function serveRequest(request, response)
     var urlparts = url.parse(request.url, true);
     var requestPath = urlparts.pathname.substring(1);   // omit leading slash
 
-    // Intercept http and redirect to https.
-    // Allows clients to connect via bare URL bamboozled.blackbirdinteractive.com.
-    if (request.protocol === "http")
-    {
-        var redirect = "https://" + request.headers.host + request.url;
-        response.redirect(redirect);
-        logDebug(`redirecting http request to ${redirect}`);
-    }
-    else if (request.method === 'POST')
+    if (request.method === 'POST')
     {
         let body = '';
         request.on('data', chunk => {
@@ -207,6 +199,39 @@ function serveParsedRequest(requestPath, urlparts, body, response)
             break;
         default:
             serveFile(requestPath, response);
+    }
+}
+
+// Intercept http and redirect to https.
+// Allows clients to connect via bare URL bamboozled.blackbirdinteractive.com.
+function startHttpRedirectServer(hostname, port = 80)
+{
+    http.createServer(tryRedirectRequest)
+        .listen(port, //hostname,
+        function()
+        {
+            console.log(`redirect server running at http://${hostname}:${port}/`);
+        });
+}
+
+function tryRedirectRequest(request, response)
+{
+    try
+    {
+        if (request.protocol === "http")
+        {
+            var redirect = "https://" + request.headers.host + request.url;
+            response.redirect(redirect);
+            logDebug(`redirecting http request to ${redirect}`);
+        }
+    }
+    catch (error)
+    {
+        console.error(error);
+        
+        response.writeHead(404, {'Content-Type': 'application/json'});
+        response.write(`{"error": "${error.message}"}`);
+        response.end();
     }
 }
 
@@ -557,7 +582,8 @@ function logDebug(msg)
 function main()
 {
     database = connectToDatabase(config.mysql);
-    startSecureServer(config.hostname, config.port);
+    startHttpRedirectServer(config.hostname);
+    startHttpsServer(config.hostname, config.port);
 }
 
 main();
