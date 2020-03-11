@@ -158,7 +158,13 @@ function serveRequest(request, response)
     var urlparts = url.parse(request.url, true);
     var requestPath = urlparts.pathname.substring(1);   // omit leading slash
 
-    if (request.method === 'POST')
+    // Intercept http and redirect to https.
+    // Allows clients to connect via bare URL bamboozled.blackbirdinteractive.com.
+    if (request.protocol === "http")
+    {
+        response.redirect("https://" + request.headers.host + request.url);
+    }
+    else if (request.method === 'POST')
     {
         let body = '';
         request.on('data', chunk => {
