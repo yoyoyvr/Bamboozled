@@ -62,3 +62,5 @@ typings/
 
 # app-specific configuration, may include secrets and credentials
 .config*.json
+server/*.pem
+

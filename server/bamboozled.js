@@ -122,6 +122,21 @@ function startServer(hostname, port)
         });
 }
 
+function startSecureServer(hostname, port)
+{
+    const options = {
+        key: fs.readFileSync('./bbi.com-key.pem'),
+        cert: fs.readFileSync('./bbi.com-cert.pem'),
+        ca: fs.readFileSync('./bbi.com-inter.pem')
+    };
+    https.createServer(options, tryServeRequest)
+        .listen(port, //hostname,
+        function()
+        {
+            console.log(`server running at https://${hostname}:${port}/`);
+        });
+}
+
 function tryServeRequest(request, response)
 {
     try
@@ -294,6 +309,7 @@ function continuePlaySession(sessionid, response)
     else
     {
         // TODO: do we ever get here?
+        logError(`error: failed to continue play session`);
     }
 }
 
@@ -306,6 +322,13 @@ function reportSessionScore(session)
 {
     var employee_id = session.user;
     var employee_name = session.username;
+    
+    if (config.banned && config.banned.includes(employee_id))
+    {
+        logError(`ignoring score from banned player ${employee_name}`)
+        return;
+    }
+    
     var timestamp = getTimestamp();
     var duration = timestamp - session.starttime;
     var score = session.right;
@@ -518,7 +541,7 @@ function logError(err)
 function main()
 {
     database = connectToDatabase(config.mysql);
-    startServer(config.hostname, config.port);
+    startSecureServer(config.hostname, config.port);
 }
 
 main();
