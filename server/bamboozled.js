@@ -218,12 +218,9 @@ function tryRedirectRequest(request, response)
 {
     try
     {
-        if (request.protocol === "http")
-        {
-            var redirect = "https://" + request.headers.host + request.url;
-            response.redirect(redirect);
-            logDebug(`redirecting http request to ${redirect}`);
-        }
+        var redirect = "https://" + request.headers.host + request.url;
+        response.redirect(redirect);
+        logDebug(`redirecting http request to ${redirect}`);
     }
     catch (error)
     {
