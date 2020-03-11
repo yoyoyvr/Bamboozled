@@ -564,16 +564,16 @@ async function validateIDToken(idtoken)
     return payload;
 }
 
-function logError(err)
+function logError(msg)
 {
-    console.log(err);
+    console.log(msg);
 }
 
 function logDebug(msg)
 {
     if (config.debug)
     {
-        console.log(err);
+        console.log(msg);
     }
 }
 
