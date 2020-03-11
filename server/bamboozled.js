@@ -580,7 +580,7 @@ function logDebug(msg)
 function main()
 {
     database = connectToDatabase(config.mysql);
-    startHttpRedirectServer(config.hostname, 3000);
+    startHttpRedirectServer(config.hostname);
     startHttpsServer(config.hostname, config.port);
 }
 
