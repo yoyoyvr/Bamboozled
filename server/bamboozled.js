@@ -162,7 +162,9 @@ function serveRequest(request, response)
     // Allows clients to connect via bare URL bamboozled.blackbirdinteractive.com.
     if (request.protocol === "http")
     {
-        response.redirect("https://" + request.headers.host + request.url);
+        var redirect = "https://" + request.headers.host + request.url;
+        response.redirect(redirect);
+        logDebug(`redirecting http request to ${redirect}`);
     }
     else if (request.method === 'POST')
     {
@@ -542,6 +544,14 @@ async function validateIDToken(idtoken)
 function logError(err)
 {
     console.log(err);
+}
+
+function logDebug(msg)
+{
+    if (config.debug)
+    {
+        console.log(err);
+    }
 }
 
 function main()
