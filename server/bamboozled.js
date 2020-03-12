@@ -112,7 +112,7 @@ function connectToDatabase(config)
     return db;
 }
 
-function startServer(hostname, port)
+function startHttpServer(hostname, port = 80)
 {
     http.createServer(tryServeRequest)
         .listen(port, //hostname,
@@ -122,7 +122,7 @@ function startServer(hostname, port)
         });
 }
 
-function startSecureServer(hostname, port)
+function startHttpsServer(hostname, port = 443)
 {
     const options = {
         key: fs.readFileSync('./bbi.com-key.pem'),
@@ -199,6 +199,37 @@ function serveParsedRequest(requestPath, urlparts, body, response)
             break;
         default:
             serveFile(requestPath, response);
+    }
+}
+
+// Intercept http and redirect to https.
+// Allows clients to connect via bare URL bamboozled.blackbirdinteractive.com.
+function startHttpRedirectServer(hostname, port = 80)
+{
+    http.createServer(tryRedirectRequest)
+        .listen(port, //hostname,
+        function()
+        {
+            console.log(`redirect server running at http://${hostname}:${port}/`);
+        });
+}
+
+function tryRedirectRequest(request, response)
+{
+    try
+    {
+        var redirect = "https://" + request.headers.host + request.url;
+        logDebug(`redirecting http request to ${redirect}`);
+        response.writeHead(301, { Location: redirect });
+        response.end();
+    }
+    catch (error)
+    {
+        console.error(error);
+        
+        response.writeHead(404, {'Content-Type': 'application/json'});
+        response.write(`{"error": "${error.message}"}`);
+        response.end();
     }
 }
 
@@ -533,15 +564,24 @@ async function validateIDToken(idtoken)
     return payload;
 }
 
-function logError(err)
+function logError(msg)
 {
-    console.log(err);
+    console.log(msg);
+}
+
+function logDebug(msg)
+{
+    if (config.debug)
+    {
+        console.log(msg);
+    }
 }
 
 function main()
 {
     database = connectToDatabase(config.mysql);
-    startSecureServer(config.hostname, config.port);
+    startHttpRedirectServer(config.hostname);
+    startHttpsServer(config.hostname, config.port);
 }
 
 main();
